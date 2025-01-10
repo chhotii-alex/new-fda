@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project]
+name = "new_fda"
+authors = [
+    { name = "Alex Morgan", email = "amorgan2@bidmc.harvard.edu" },
+]
+version = "0.0.1"
+description = "datamining for FDA contract"
+requires-python = ">=3.12"
+dependencies = ["pandas>=2.2.3", "sqlalchemy>=2.0.34", "pyodbc>=5.1.0"]
+
+[project.scripts]
+fda-fetch = "new_fda.fetchall:main"
