@@ -36,8 +36,8 @@ class ResultFetch:
             limit_clause = ''
         else:
             limit_clause = f" TOP {limit} "
-        return f"""SELECT {limit_clause} {self.mrn_col}, {self.date_col}, {result_cols},
-           s.mrn, s.dob, s.pat_type_full 
+        return f"""SELECT {limit_clause} {self.mrn_col} mrn, {self.date_col} dx_date, {result_cols},
+           s.gender, s.dob, s.pat_type_full 
               FROM {table_prefix}{self.table_name} t
                     JOIN {table_prefix}{self.join_table} s on {self.join_on}  
             WHERE {self.where_clause_col} = '{self.where_clause_value}'"""

@@ -9,9 +9,17 @@ def do_queries(virginia):
     for query in queries:
         q = query.make_query(100)
         df = pd.read_sql(q, virginia)
-        df['age'] = ((df[query.get_date_col()] - df['dob']).dt.days)/365.25
+        df['age'] = ((df['dx_date'] - df['dob']).dt.days)/365.25
         df['age'] = df['age'].astype(int)
         df.loc[(df['age'] > 80), 'age'] = 80
+        result_cols = query.get_result_columns()
+        for col in result_cols:
+            df[col] = df[col].fillna('')
+        df['all_result'] = df[result_cols[0]]
+        for i in range(1, len(result_cols)):
+            df['all_result'] = df['all_result'] + ' ' + df[result_cols[i]]
+        df.drop(columns=result_cols, inplace=True)
+        df['dx'] = query.dx
         print(query.where_clause_value)
         print(df.head(50))
 
