@@ -1,0 +1,18 @@
+Local Database Strategy
+
+Local to the PC there are a number of docker containers running Postgres servers.
+This project will save data to ONE of these, the one named newfda.
+Within the newfda Postres server instance there is a database named dataset.
+The dataset database contains TWO user-data schemas:
+- secret - any PHI
+- public - de-identified data
+
+User "postgres" owns both these schemas and has full privileges. We can join across 
+tables in the two schemas by qualifying the table names with the schema names like so:
+
+select * from public.my_data d
+  JOIN secret.lookup s on d.id = s.id
+
+Do not use uppercase letters in Postgres names!!!! Argh!!!!!!!!!!!!!!!
+
+

@@ -1,5 +1,6 @@
+import re
 
-substitutions = {
+substitutionstr = {
     '  ': ' ',                                                            # squeeze double spaces
     "O\\'LEARY": 'L',                                                     # troublesome to parse names with apostrophies
     '[*]+': '',                                                           # strings of decorative/emphasizing astrisks add no information
@@ -40,3 +41,10 @@ substitutions = {
     'ON *\\.': '',
     ' \\.': ''
 }
+
+substitutions = {re.compile(k) : v for (k, v) in substitutionstr.items() }
+
+def do_substitutions(s):
+    for pattern, repl in substitutions.items():
+        s = re.sub(pattern, repl, s).strip()
+    return s
