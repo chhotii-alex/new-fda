@@ -12,7 +12,7 @@ authors = [
 ]
 version = "0.0.1"
 description = "datamining for FDA contract"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = ["pandas>=2.2.3", "sqlalchemy>=2.0.34", "pyodbc>=5.1.0"]
 
 [project.scripts]
