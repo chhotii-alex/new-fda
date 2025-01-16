@@ -29,18 +29,16 @@ class ResultFetch:
         self.where_clause_value = where_clause_value
         self.quantitative = quant
 
-    def make_query(self, limit=None):
+    def make_query(self, db, limit=None):
         result_cols = ', '.join(self.result_columns)
-        table_prefix = '[MDW_Analytics].[dbo].'
-        if limit is None:
-            limit_clause = ''
-        else:
-            limit_clause = f" TOP {limit} "
-        return f"""SELECT {limit_clause} {self.mrn_col} mrn, {self.date_col} dx_date, {result_cols},
-           s.gender, s.dob, s.pat_type_full 
-              FROM {table_prefix}{self.table_name} t
-                    JOIN {table_prefix}{self.join_table} s on {self.join_on}  
-            WHERE {self.where_clause_col} = '{self.where_clause_value}'"""
+        table_prefix = db.get_prefix()
+        limit_clause = db.make_limit_clause(limit)
+        return db.order_select_query(
+            limit_clause,
+            f"""{self.mrn_col} mrn, {self.date_col} dx_date, {result_cols}, s.gender, s.dob, s.pat_type_full """,
+            f"""{table_prefix}{self.table_name} t""",
+            f""" {table_prefix}{self.join_table} s on {self.join_on} """,
+            f"""{self.where_clause_col} = '{self.where_clause_value}'""")
     
     def make_count_query(self, limit=None):
         result_cols = ', '.join(self.result_columns)

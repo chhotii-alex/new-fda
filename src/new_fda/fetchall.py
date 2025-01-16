@@ -1,14 +1,16 @@
-from sqlalchemy import create_engine
 import pandas as pd
 import numpy as np
 from .querydef import get_queries
 from .stringsubs import do_substitutions
+from .sourcedb import get_database
 
 def do_queries(virginia):
     queries = get_queries()
     for query in queries:
-        q = query.make_query(100)
-        df = pd.read_sql(q, virginia)
+        q = query.make_query(virginia, 100)
+        print(q)
+        df = pd.read_sql(q, virginia.engine)
+        print(df)
         df['age'] = ((df['dx_date'] - df['dob']).dt.days)/365.25
         df['age'] = df['age'].astype(int)
         df.loc[(df['age'] > 80), 'age'] = 80
@@ -71,6 +73,6 @@ def do_distinct_result_queries(virginia):
             f.write('\n\n')
 
 def main():
-    virginia = create_engine("mssql+pyodbc://virginia")
+    virginia = get_database('virginia')
 
     do_queries(virginia)
