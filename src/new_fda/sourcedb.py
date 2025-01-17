@@ -1,8 +1,10 @@
 import os
 import sys
+from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine
 from .cache import ResultsCacher
+from sqlalchemy.dialects.postgresql import insert
 
 class Database:
     def __init__(self, schema):
@@ -29,10 +31,15 @@ class Database:
     
     def make_cache(self):
         return ResultsCacher(self)
-
+    
 class PostgresDatabase(Database):
     def get_connection_string(self):
-        return "postgresql+psycopg2://postgres:%s@localhost:5434/%s" % ("thisisfake", self.schema.get_name())
+        s = "postgresql+psycopg2://postgres:%s@localhost:5434/%s" % (self.get_password(), self.schema.get_name())
+        print(s)
+        return s
+    
+    def get_password(self):
+        return "thisisfake"
 
     def get_prefix(self):
         return ""
@@ -76,8 +83,31 @@ class SQLServerDatabase(Database):
            JOIN {join}
            WHERE {where}
         """
+    
+class DestinationDatabase(PostgresDatabase):
+    def do_inserts(self, table_name, df, index_cols):
+        df = df.groupby(index_cols).first()
+        def insert_on_conflict_nothing(table, conn, keys, data_iter):
+            data = [dict(zip(keys, row)) for row in data_iter]
+            stmt = insert(table.table).values(data).on_conflict_do_nothing(index_elements=index_cols)
+            result = conn.execute(stmt)
+            return result.rowcount
+        df.to_sql(name=table_name, con=self.engine, if_exists="append", method=insert_on_conflict_nothing)  
+    
+    def get_password(self):
+        if os.name == "nt":
+            base_path = Path("C:\\shared\\reagan")
+        else:
+            base_path = os.path.join(os.path.expanduser("~"), "fakedatabases")
+        password_file_path = base_path / self.get_name() / "password.txt"
+        with open(password_file_path, "r") as f:
+            password = f.readline().strip()
+        return password
+
+
 class Schema:
-    pass
+    def database_type(self):
+        return "source"
 
 class Virginia(Schema):
     def get_prefix(self):
@@ -93,16 +123,28 @@ class Condor(Schema):
     def get_name(self):
         return "condor"
     
+class Destination(Schema):
+    def get_name(self):
+        return "newfda"
+
+    def database_type(self):
+        return "destination"
+
 def get_database(name):
     if name == "virginia":
         schema = Virginia()
     elif name == "condor":
         schema = Condor()
+    elif name == "newfda":
+        schema = Destination()
     else:
         raise Exception("Unknown source database specified")
-    if os.name == "nt":
-        db = SQLServerDatabase(schema)
+    if schema.database_type() == "destination":
+        db = DestinationDatabase(schema)
     else:
-        print("Warning, running in test mode", file=sys.stderr)
-        db = PostgresDatabase(schema)
+        if os.name == "nt":
+            db = SQLServerDatabase(schema)
+        else:
+            print("Warning, running in test mode", file=sys.stderr)
+            db = PostgresDatabase(schema)
     return db

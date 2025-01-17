@@ -1,17 +1,15 @@
 import pandas as pd
 import numpy as np
 from .querydef import get_queries
-from .stringsubs import do_substitutions
 from .sourcedb import get_database
 from .parse_results import extract_result
 
-def do_queries(virginia):
+def do_queries(virginia, destinationdb):
     queries = get_queries()
     for query in queries:
-        q = query.make_query(virginia, 200)
+        q = query.make_query(virginia, 20)
         print(q)
         df = virginia.do_select(q)
-        print(df)
         df['age'] = ((df['dx_date'] - df['dob']).dt.days)/365.25
         df['age'] = df['age'].astype(int)
         df.loc[(df['age'] > 80), 'age'] = 80
@@ -24,16 +22,12 @@ def do_queries(virginia):
         df.drop(columns=result_cols, inplace=True)
         df['dx'] = query.dx
         df['result'] = df['all_result'].apply(extract_result)
-        print(query.where_clause_value)
-        print(df.head(50))
-        if (df['result'] == 'unknown').sum() > 0:
-            print("LOOK")
-            print(df[df['result'] == 'unknown'])
-            for s in df.loc[(df['result'] == 'unknown'), 'all_result']:
-                print(s)
-                print()
-            if not query.quantitative and (query.table_name != 'vwMICRO_Organisms') and ('LYME' not in query.dx) and ('Rapid' not in query.where_clause_value) and ('Giardia' not in query.dx) and ('CMV' not in query.dx):
-                sys.exit(1)
+        df.drop(columns='all_result', inplace=True)
+        df.drop_duplicates(subset=["mrn", "dx_date", "dx"], inplace=True)
+        print(df.head())
+        print(df.dtypes)
+        destinationdb.do_inserts('results', df, ["mrn", "dx_date", "dx"])
+
 
 def do_distinct_result_queries(virginia):
     queries = get_queries()
@@ -84,5 +78,6 @@ def do_distinct_result_queries(virginia):
 
 def main():
     virginia = get_database('virginia')
+    destinationdb = get_database('newfda')
 
-    do_queries(virginia)
+    do_queries(virginia, destinationdb)
