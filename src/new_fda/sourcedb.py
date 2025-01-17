@@ -31,7 +31,7 @@ class PostgresDatabase(Database):
 
 class SQLServerDatabase(Database):
     def get_connection_string(self):
-        return "mssql+pyodbc://%" % self.schema.get_name()
+        return "mssql+pyodbc://%s" % self.schema.get_name()
 
     def get_prefix(self):
         return self.schema.get_prefix()
@@ -40,7 +40,7 @@ class SQLServerDatabase(Database):
         if n is None:
             return " "
         else:
-            return f" TOP {limit} "
+            return f" TOP {n} "
 
     def order_select_query(self, limit_clause, columns, table, join, where):
         return f"""SELECT

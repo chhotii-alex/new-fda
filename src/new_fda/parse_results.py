@@ -1,7 +1,8 @@
+import importlib.resources
 import pandas as pd
 
 misspellings = {}
-with open("misspellings.txt", "r") as f:
+with importlib.resources.open_text("new_fda", "misspellings.txt") as f:
     while True:
         line = f.readline().strip().split()
         if not len(line):
@@ -9,12 +10,14 @@ with open("misspellings.txt", "r") as f:
         misspellings[line[0]] = line[1]
 
 def get_important_words():
-    df = pd.read_csv('important.csv', header=None)
+    with importlib.resources.open_text("new_fda", "important.csv") as f:
+        df = pd.read_csv(f, header=None)
     words = set(df.loc[(df[1] == 'y'), 0])
     return words
 
 def read_meanings():
-    df = pd.read_csv("meanings.csv")
+    with importlib.resources.open_text("new_fda", "meanings.csv") as f:
+        df = pd.read_csv(f)
     df.fillna('', inplace=True)
     df['abbrev'] = df['abbrev'].str[:20]
     return dict(zip(df["abbrev"], df["meaning"]))
@@ -30,7 +33,7 @@ def subs(c, second_pass):
             return "9"
         else:
             return c
-    if c in "./():;<>=":
+    if c in "./():;<>":
         return c
     return " "
 
