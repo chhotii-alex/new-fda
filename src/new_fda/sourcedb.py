@@ -1,11 +1,34 @@
 import os
 import sys
+import pandas as pd
 from sqlalchemy import create_engine
+from .cache import ResultsCacher
 
 class Database:
     def __init__(self, schema):
         self.schema = schema
         self.engine = create_engine(self.get_connection_string())
+        self.cache = None
+
+    def allow_caching(self):
+        return True
+    
+    def get_name(self):
+        return self.schema.get_name()
+    
+    def do_select(self, query_text):
+        if self.allow_caching():
+            if self.cache is None:
+                self.cache = self.make_cache()
+            if self.cache.has_results(query_text):
+                return self.cache.results(query_text)
+        results = pd.read_sql(query_text, self.engine)
+        if self.allow_caching():
+            self.cache.save_results(query_text, results)
+        return results
+    
+    def make_cache(self):
+        return ResultsCacher(self)
 
 class PostgresDatabase(Database):
     def get_connection_string(self):
@@ -28,6 +51,9 @@ class PostgresDatabase(Database):
            WHERE {where}
            {limit_clause}
         """
+    
+    def allow_caching(self):
+        return False
 
 class SQLServerDatabase(Database):
     def get_connection_string(self):

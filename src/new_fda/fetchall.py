@@ -8,9 +8,9 @@ from .parse_results import extract_result
 def do_queries(virginia):
     queries = get_queries()
     for query in queries:
-        q = query.make_query(virginia, 100)
+        q = query.make_query(virginia, 200)
         print(q)
-        df = pd.read_sql(q, virginia.engine)
+        df = virginia.do_select(q)
         print(df)
         df['age'] = ((df['dx_date'] - df['dob']).dt.days)/365.25
         df['age'] = df['age'].astype(int)
@@ -26,6 +26,14 @@ def do_queries(virginia):
         df['result'] = df['all_result'].apply(extract_result)
         print(query.where_clause_value)
         print(df.head(50))
+        if (df['result'] == 'unknown').sum() > 0:
+            print("LOOK")
+            print(df[df['result'] == 'unknown'])
+            for s in df.loc[(df['result'] == 'unknown'), 'all_result']:
+                print(s)
+                print()
+            if not query.quantitative and (query.table_name != 'vwMICRO_Organisms') and ('LYME' not in query.dx) and ('Rapid' not in query.where_clause_value) and ('Giardia' not in query.dx) and ('CMV' not in query.dx):
+                sys.exit(1)
 
 def do_distinct_result_queries(virginia):
     queries = get_queries()
@@ -37,7 +45,7 @@ def do_distinct_result_queries(virginia):
         if query.table_name == 'vwMICRO_Organisms':
             continue
         q = query.make_count_query()
-        df = pd.read_sql(q, virginia)
+        df = virginia.do_select(q)
         """
         if type(df[query.get_date_col()].dtype) != np.dtypes.DateTime64DType:
             raise Exception("Incorrect type for date column")
