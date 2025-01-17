@@ -15,4 +15,5 @@ select * from public.my_data d
 
 Do not use uppercase letters in Postgres names!!!! Argh!!!!!!!!!!!!!!!
 
-
+Documentation on schemas:
+https://www.postgresql.org/docs/current/ddl-schemas.html

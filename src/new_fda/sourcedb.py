@@ -85,14 +85,27 @@ class SQLServerDatabase(Database):
         """
     
 class DestinationDatabase(PostgresDatabase):
+    """
+    Add something like this to database creation schema: 
+    ALTER TABLE results
+    ADD CONSTRAINT employee_unq UNIQUE(mrn, dx_date, dx);
+    See:
+    https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html
+    https://docs.sqlalchemy.org/en/20/dialects/postgresql.html
+
+    """
     def do_inserts(self, table_name, df, index_cols):
         df = df.groupby(index_cols).first()
+        """
+        df.to_sql(name=table_name, con=self.engine, if_exists='append')
+        """
         def insert_on_conflict_nothing(table, conn, keys, data_iter):
             data = [dict(zip(keys, row)) for row in data_iter]
             stmt = insert(table.table).values(data).on_conflict_do_nothing(index_elements=index_cols)
             result = conn.execute(stmt)
             return result.rowcount
         df.to_sql(name=table_name, con=self.engine, if_exists="append", method=insert_on_conflict_nothing)  
+        
     
     def get_password(self):
         if os.name == "nt":
