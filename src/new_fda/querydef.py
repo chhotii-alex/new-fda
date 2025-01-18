@@ -40,19 +40,22 @@ class ResultFetch:
             f""" {table_prefix}{self.join_table} s on {self.join_on} """,
             f"""{self.where_clause_col} = '{self.where_clause_value}'""")
     
-    def make_count_query(self, limit=None):
+    def make_count_query(self, db, limit=None):
         result_cols = ', '.join(self.result_columns)
-        table_prefix = '[MDW_Analytics].[dbo].'
-        if limit is None:
-            limit_clause = ''
-        else:
-            limit_clause = f" TOP {limit} "
-        return f"""SELECT {limit_clause} count(*) row_count, {result_cols} FROM {table_prefix}{self.table_name} t
-                    JOIN {table_prefix}{self.join_table} s on {self.join_on}  
-            WHERE {self.where_clause_col} = '{self.where_clause_value}'
-            GROUP BY {result_cols}
-            ORDER BY row_count DESC, {result_cols}
-"""
+        return_cols = 'count(*) row_count, ' + result_cols 
+        order_cols =  'row_count DESC, ' + result_cols 
+        table_prefix = db.get_prefix()
+        limit_clause = db.make_limit_clause(limit)
+        return db.order_select_query(
+            limit_clause,
+            return_cols,
+            f"{table_prefix}{self.table_name} t",
+            f"{table_prefix}{self.join_table} s on {self.join_on}",
+            f"""{self.where_clause_col} = '{self.where_clause_value}'""",
+            result_cols, 
+            order_cols
+        )
+
     
     def get_df_col(self, sql_col):
         fields = sql_col.split(".")

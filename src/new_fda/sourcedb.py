@@ -70,16 +70,26 @@ class PostgresDatabase(Database):
         else:
             return f" LIMIT {n} "
 
-    def order_select_query(self, limit_clause, columns, table, join, where):
+    def order_select_query(self, limit_clause, columns, table, join, where, group=None, order=None):
         if join is None:
             join_clause = ''
         else:
             join_clause = f'JOIN {join}'
+        if group is None:
+            group_clause = ""
+        else:
+            group_clause = f'GROUP BY {group}'
+        if order is None:
+            order_clause = ''
+        else:
+            order_clause = f'ORDER BY {order}'
         return f"""SELECT
              {columns}
            FROM {table}
            {join_clause}
            WHERE {where}
+            {group_clause}
+            {order_clause}
            {limit_clause}
         """
     
@@ -99,13 +109,23 @@ class SQLServerDatabase(Database):
         else:
             return f" TOP {n} "
 
-    def order_select_query(self, limit_clause, columns, table, join, where):
+    def order_select_query(self, limit_clause, columns, table, join, where, group=None, order=None):
+        if group is None:
+            group_clause = ""
+        else:
+            group_clause = f'GROUP BY {group}'
+        if order is None:
+            order_clause = ''
+        else:
+            order_clause = f'ORDER BY {order}'
         return f"""SELECT
            {limit_clause}
              {columns}
            FROM {table}
            JOIN {join}
            WHERE {where}
+            {group_clause}
+            {order_clause}
         """
     
 class DestinationDatabase(PostgresDatabase):
@@ -134,7 +154,7 @@ class DestinationDatabase(PostgresDatabase):
             stmt = insert(table.table).values(data).on_conflict_do_nothing(index_elements=index_cols)
             result = conn.execute(stmt)
             return result.rowcount
-        df.to_sql(name=table_name, con=self.engine, if_exists="append", method=insert_on_conflict_nothing)  
+        df.to_sql(name=table_name, con=self.engine, if_exists="append", chunksize=128, method=insert_on_conflict_nothing)  
         
     
     def get_password(self):

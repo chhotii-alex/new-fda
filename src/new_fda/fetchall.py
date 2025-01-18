@@ -7,24 +7,32 @@ from .parse_results import extract_result
 def do_queries(virginia, destinationdb):
     queries = get_queries()
     for query in queries:
-        q = query.make_query(virginia, 20)
+        q = query.make_query(virginia)
         print(q)
         df = virginia.do_select(q)
+
+        # figure out age at time (clip age at 80 because PHI)
+        df.dropna(subset=['dx_date', 'dob'], inplace=True)
         df['age'] = ((df['dx_date'] - df['dob']).dt.days)/365.25
         df['age'] = df['age'].astype(int)
         df.loc[(df['age'] > 80), 'age'] = 80
+
         result_cols = query.get_result_columns()
-        for col in result_cols:
-            df[col] = df[col].fillna('')
-        df['all_result'] = df[result_cols[0]]
-        for i in range(1, len(result_cols)):
-            df['all_result'] = df['all_result'] + ' ' + df[result_cols[i]]
+        if query.table_name == 'vwMICRO_Organisms':
+            df['result'] = 'positive'
+        else:
+            for col in result_cols:
+                df[col] = df[col].fillna('')
+            df['all_result'] = df[result_cols[0]]
+            for i in range(1, len(result_cols)):
+                df['all_result'] = df['all_result'] + ' ' + df[result_cols[i]]
+            df['result'] = df['all_result'].apply(extract_result)
+            df.drop(columns='all_result', inplace=True)
         df.drop(columns=result_cols, inplace=True)
+
         df['dx'] = query.dx
-        df['result'] = df['all_result'].apply(extract_result)
-        df.drop(columns='all_result', inplace=True)
         df.drop_duplicates(subset=["mrn", "dx_date", "dx"], inplace=True)
-        destinationdb.do_inserts('secret.results', df, ["mrn", "dx_date", "dx"])
+        destinationdb.do_inserts('secret.results', df, ["mrn", "dx_date", "dx"], True)
 
 
 def do_distinct_result_queries(virginia):
@@ -32,16 +40,12 @@ def do_distinct_result_queries(virginia):
     already_seen = set()
     originals = []
     for query in queries:
-        if query.quantitative:
+        if not query.quantitative:
             continue
         if query.table_name == 'vwMICRO_Organisms':
             continue
-        q = query.make_count_query()
+        q = query.make_count_query(virginia)
         df = virginia.do_select(q)
-        """
-        if type(df[query.get_date_col()].dtype) != np.dtypes.DateTime64DType:
-            raise Exception("Incorrect type for date column")
-        """
         total_count = df['row_count'].sum()
         enough = 0.9*total_count
         df['cumsum'] = df['row_count'].cumsum()
@@ -69,7 +73,7 @@ def do_distinct_result_queries(virginia):
     print()
     print("Total distinct string count:")
     print(len(originals))
-    with open("results.txt", "w") as f:
+    with open("quantresults.txt", "w") as f:
         for s in originals:
             f.write(s)
             f.write('\n\n')
@@ -78,4 +82,5 @@ def main():
     virginia = get_database('virginia')
     destinationdb = get_database('newfda')
 
-    do_queries(virginia, destinationdb)
+    do_distinct_result_queries(virginia)
+    #do_queries(virginia, destinationdb)
