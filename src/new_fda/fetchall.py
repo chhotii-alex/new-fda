@@ -24,9 +24,7 @@ def do_queries(virginia, destinationdb):
         df['result'] = df['all_result'].apply(extract_result)
         df.drop(columns='all_result', inplace=True)
         df.drop_duplicates(subset=["mrn", "dx_date", "dx"], inplace=True)
-        print(df.head())
-        print(df.dtypes)
-        destinationdb.do_inserts('results', df, ["mrn", "dx_date", "dx"])
+        destinationdb.do_inserts('secret.results', df, ["mrn", "dx_date", "dx"])
 
 
 def do_distinct_result_queries(virginia):

@@ -17,3 +17,6 @@ Do not use uppercase letters in Postgres names!!!! Argh!!!!!!!!!!!!!!!
 
 Documentation on schemas:
 https://www.postgresql.org/docs/current/ddl-schemas.html
+
+
+Medical record numbers are obfuscated using this algorithm: Each identifier will be converted into a number, x. Each x will be replaced by f(x), where f(x) = (a * x) % b; b is a random 64-bit prime number, and a is a random number less than b, chosen such that f(x) is an injective function. This obfuscation depends on the fact that if a and b are not known, inverting f(x) requires a non-trivial amount of mathematical sophistication and compute power. Although the code to perform this obfuscation will be archived on GitHub, the values of a and b will not be in the code repository.
