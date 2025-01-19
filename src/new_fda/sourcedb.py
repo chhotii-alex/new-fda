@@ -71,7 +71,9 @@ class PostgresDatabase(Database):
         else:
             return f" LIMIT {n} "
 
-    def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None):
+    def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None, distinct=False):
+        if limit_clause is None:
+            limit_clause = ''
         if join is None:
             join_clause = ''
         else:
@@ -84,11 +86,19 @@ class PostgresDatabase(Database):
             order_clause = ''
         else:
             order_clause = f'ORDER BY {order}'
-        return f"""SELECT
+        if distinct:
+            distinct_clause = 'distinct'
+        else:
+            distinct_clause = ''
+        if where is None:
+            where_clause = ""
+        else:
+            where_clause = f"WHERE {where}"
+        return f"""SELECT {distinct_clause}
              {columns}
-           FROM {table}
+           FROM "{table}"
            {join_clause}
-           WHERE {where}
+           {where_clause}
             {group_clause}
             {order_clause}
            {limit_clause}
@@ -110,7 +120,9 @@ class SQLServerDatabase(Database):
         else:
             return f" TOP {n} "
 
-    def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None):
+    def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None, distinct=False):
+        if where is None:
+            raise Exception("Are you sure?")
         if join is None:
             join_clause = ''
         else:
@@ -123,7 +135,11 @@ class SQLServerDatabase(Database):
             order_clause = ''
         else:
             order_clause = f'ORDER BY {order}'
-        return f"""SELECT
+        if distinct:
+            distinct_clause = 'distinct'
+        else:
+            distinct_clause = ''
+        return f"""SELECT {distinct_clause}
            {limit_clause}
              {columns}
            FROM {table}

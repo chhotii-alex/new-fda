@@ -1,25 +1,58 @@
 import pandas as pd
 import numpy as np
+from .util import drop_rows_with_mask
 from .querydef import get_queries
 from .sourcedb import get_database
 from .parse_results import extract_result
 from .annotations import get_annotation_queries
+from collections import defaultdict
+
+def save_interesting(df, destinationdb):
+    q = destinationdb.order_select_query(limit_clause=None, columns='mrn, dx_date', table='secret.results', join=None, where=None, group=None, order=None, distinct=True)
+    results = destinationdb.do_select(q)
+    m = pd.merge(results, df, on='mrn', how='left')
+    m.dropna(inplace=True)
+    m['diff'] = (m['dx_date'] - m['result_dt']).dt.days
+    drop_rows_with_mask(m, (m['diff'] < -30))
+    m['diff'] = m['diff'].abs()
+    m.sort_values(by='diff', inplace=True)
+    print("Matches on MRN:")
+    print(m.head())
+    print(m.tail())
+    print("End save_interesting")
 
 def do_annotation_queries(virginia, destinationdb):
+    data_by_type = defaultdict(list)
     for query, parser in get_annotation_queries():
         result_name = query.name
-        q = query.make_query(virginia)
+        q = query.make_query(virginia, 9000)  # TODO remove the limit
         print(q)
         df = virginia.do_select(q)
         df.dropna(inplace=True)
         df[result_name] = df['result_value'].apply(parser)
         df.dropna(inplace=True)
         df.drop(columns='result_value', inplace=True)
+        data_by_type[result_name].append(df)
         print(df)
+    for key in data_by_type.keys():
+        df = pd.concat(data_by_type[key])
+        df.drop_duplicates(subset=['mrn', 'result_dt'], inplace=True)
+        data_by_type[key] = df
+    calc_bmi = pd.merge(data_by_type['Weight'], data_by_type['Height'], how='inner', on=['mrn', 'result_dt'])
+    calc_bmi['BMI'] =  calc_bmi['Weight'] * 703 / (calc_bmi['Height'] * calc_bmi['Height'])
+    calc_bmi.drop(columns=['Weight', 'Height'], inplace=True)
+    bmi = pd.concat([data_by_type['BMI'], calc_bmi])
+    bmi.drop_duplicates(subset=['mrn', 'result_dt'], inplace=True)
+
+    for df in [bmi, data_by_type['smoking']]:
+        save_interesting(df, destinationdb)
+
 
 def do_queries(virginia, destinationdb):
     queries = get_queries()
     for query in queries:
+        if query.quantitative: # TODO deal with these!!!
+            continue
         q = query.make_query(virginia)
         print(q)
         df = virginia.do_select(q)
@@ -45,7 +78,7 @@ def do_queries(virginia, destinationdb):
 
         df['dx'] = query.dx
         df.drop_duplicates(subset=["mrn", "dx_date", "dx"], inplace=True)
-        destinationdb.do_inserts('secret.results', df, ["mrn", "dx_date", "dx"], True)
+        destinationdb.do_inserts('secret.results', df, ["mrn", "dx_date", "dx"], False)
 
 
 def do_distinct_result_queries(virginia):
@@ -95,6 +128,6 @@ def main():
     virginia = get_database('virginia')
     destinationdb = get_database('newfda')
 
+    #do_queries(virginia, destinationdb)
     do_annotation_queries(virginia, destinationdb)
     #do_distinct_result_queries(virginia)
-    #do_queries(virginia, destinationdb)
