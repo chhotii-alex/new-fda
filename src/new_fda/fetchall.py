@@ -8,6 +8,7 @@ from .annotations import get_annotation_queries
 from collections import defaultdict
 
 def save_interesting(df, destinationdb):
+    table_name = "secret.%s" % df.columns[2].lower()
     q = destinationdb.order_select_query(limit_clause=None, columns='mrn, dx_date', table='secret.results', join=None, where=None, group=None, order=None, distinct=True)
     results = destinationdb.do_select(q)
     m = pd.merge(results, df, on='mrn', how='left')
@@ -16,10 +17,9 @@ def save_interesting(df, destinationdb):
     drop_rows_with_mask(m, (m['diff'] < -30))
     m['diff'] = m['diff'].abs()
     m.sort_values(by='diff', inplace=True)
-    print("Matches on MRN:")
-    print(m.head())
-    print(m.tail())
-    print("End save_interesting")
+    m.drop_duplicates(subset=['mrn', 'dx_date'], inplace=True)
+    m.drop(columns=['diff', 'result_dt'], inplace=True)
+    destinationdb.do_inserts(table_name, m, list(m.columns[:2]), True)
 
 def do_annotation_queries(virginia, destinationdb):
     data_by_type = defaultdict(list)

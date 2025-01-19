@@ -72,6 +72,7 @@ class PostgresDatabase(Database):
             return f" LIMIT {n} "
 
     def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None, distinct=False):
+        table = table.lower()
         if limit_clause is None:
             limit_clause = ''
         if join is None:
