@@ -33,6 +33,7 @@ class Database:
     def do_select(self, query_text):
         results = self._do_select(query_text)
         if 'mrn' in results.columns:
+            results.dropna(subset='mrn', inplace=True)
             results['mrn'] = pd.to_numeric(results['mrn'], errors='coerce',
                                                        downcast='integer')
             results.dropna(subset='mrn', inplace=True)
@@ -70,7 +71,7 @@ class PostgresDatabase(Database):
         else:
             return f" LIMIT {n} "
 
-    def order_select_query(self, limit_clause, columns, table, join, where, group=None, order=None):
+    def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None):
         if join is None:
             join_clause = ''
         else:
@@ -109,7 +110,11 @@ class SQLServerDatabase(Database):
         else:
             return f" TOP {n} "
 
-    def order_select_query(self, limit_clause, columns, table, join, where, group=None, order=None):
+    def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None):
+        if join is None:
+            join_clause = ''
+        else:
+            join_clause = f'JOIN {join}'
         if group is None:
             group_clause = ""
         else:
@@ -122,7 +127,7 @@ class SQLServerDatabase(Database):
            {limit_clause}
              {columns}
            FROM {table}
-           JOIN {join}
+           {join_clause}
            WHERE {where}
             {group_clause}
             {order_clause}

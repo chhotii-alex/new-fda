@@ -6,9 +6,14 @@ from .parse_results import extract_result
 from .annotations import get_annotation_queries
 
 def do_annotation_queries(virginia, destinationdb):
-    for query in get_annotation_queries():
+    for query, parser in get_annotation_queries():
         q = query.make_query(virginia)
+        print(q)
         df = virginia.do_select(q)
+        df.dropna(inplace=True)
+        df['extracted'] = df['result_value'].apply(parser)
+        df.dropna(inplace=True)
+        df.drop(columns='result_value', inplace=True)
         print(df)
 
 def do_queries(virginia, destinationdb):
