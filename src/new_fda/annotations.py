@@ -111,6 +111,16 @@ def parse_height(str_val):
 class SheetFetch:
     def __init__(self, result_name):
         self.result_name = result_name
+        if "BMI" in result_name:
+            self.name = "BMI"
+        elif "Weight" in result_name:
+            self.name = "Weight"
+        elif "Height" in result_name:
+            self.name = "Height"
+        elif "Tobacco" in result_name:
+            self.name = "smoking"
+        else:
+            raise Exception("Classify this result type: %s" % result_name)
 
     def make_query(self, db, limit=None):
         result_cols = """mrn, result_value, result_dt"""
