@@ -3,6 +3,13 @@ import numpy as np
 from .querydef import get_queries
 from .sourcedb import get_database
 from .parse_results import extract_result
+from .annotations import get_annotation_queries
+
+def do_annotation_queries(virginia, destinationdb):
+    for query in get_annotation_queries():
+        q = query.make_query(virginia)
+        df = virginia.do_select(q)
+        print(df)
 
 def do_queries(virginia, destinationdb):
     queries = get_queries()
@@ -82,5 +89,6 @@ def main():
     virginia = get_database('virginia')
     destinationdb = get_database('newfda')
 
-    do_distinct_result_queries(virginia)
+    do_annotation_queries(virginia, destinationdb)
+    #do_distinct_result_queries(virginia)
     #do_queries(virginia, destinationdb)

@@ -11,7 +11,10 @@ class ResultFetch:
             self.join_on = 's.lab_number = t.lab_number'
             self.mrn_col = 't.mrn'
             self.date_col = 's.spec_dt'
-            self.result_columns = ['t.text_result', 't.comments']
+            if quant:
+                self.result_columns = ['t.text_result']
+            else:
+                self.result_columns = ['t.text_result', 't.comments']
         elif self.table_name == 'vwMICRO_Organisms':
             self.where_clause_col = 't.org_name'
             self.join_table = 'vwMICRO_Specimen_All' 
@@ -25,7 +28,10 @@ class ResultFetch:
             self.join_on = 't.specimen_id = s.specimen_id'
             self.mrn_col = 't.mrn'
             self.date_col = 's.specimen_dt'
-            self.result_columns = ['t.result_value', 't.units', 't.comments']
+            if quant:
+                self.result_columns = ['t.result_value_num']
+            else:
+                self.result_columns = ['t.result_value', 't.units', 't.comments']
         self.where_clause_value = where_clause_value
         self.quantitative = quant
 
