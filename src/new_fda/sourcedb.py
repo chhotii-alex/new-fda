@@ -55,6 +55,7 @@ class Database:
 class PostgresDatabase(Database):
     def get_connection_string(self):
         s = "postgresql+psycopg2://postgres:%s@localhost:%d/%s" % (self.get_password(), self.get_port(), self.schema.get_name())
+        print(s)
         return s
 
     def get_port(self):
@@ -128,7 +129,9 @@ class SQLServerDatabase(Database):
 
     def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None, distinct=False):
         if where is None:
-            raise Exception("Are you sure?")
+            where_clause = ''
+        else:
+            where_clause = f'WHERE {where_clause}'
         if join is None:
             join_clause = ''
         else:
@@ -150,7 +153,7 @@ class SQLServerDatabase(Database):
              {columns}
            FROM {table}
            {join_clause}
-           WHERE {where}
+           {where_clause}
             {group_clause}
             {order_clause}
         """

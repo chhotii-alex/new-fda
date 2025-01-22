@@ -11,6 +11,7 @@ from .parse_hepC_sendout import parse_sendout
 from .args import configure_parser
 from .ai_classify import classify_result
 from tqdm import tqdm
+from .demographics import get_demographic_queries
 
 def save_interesting(df, destinationdb):
     table_name = "secret.%s" % df.columns[2].lower()
@@ -263,7 +264,8 @@ def main():
         destinationdb.build_schema()
         print("Built db schema")
 
-    do_queries(virginia, destinationdb)
-    do_queries_quant(virginia, destinationdb)
-    do_annotation_queries(virginia, destinationdb)
+    #do_queries(virginia, destinationdb)
+    get_demographic_queries(virginia, 100)
+    #do_queries_quant(virginia, destinationdb)
+    #do_annotation_queries(virginia, destinationdb)
     #do_distinct_result_queries(virginia)
