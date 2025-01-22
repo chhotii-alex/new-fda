@@ -70,12 +70,15 @@ class PostgresDatabase(Database):
         if n is None:
             return " "
         else:
+            print("WARNING, using a limit!")
             return f" LIMIT {n} "
 
     def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None, distinct=False):
         table = table.lower()
         if limit_clause is None:
             limit_clause = ''
+        else:
+            print("WARNING, using a limit")
         if join is None:
             join_clause = ''
         else:
@@ -120,6 +123,7 @@ class SQLServerDatabase(Database):
         if n is None:
             return " "
         else:
+            print("WARNING, using a limit")
             return f" TOP {n} "
 
     def order_select_query(self, limit_clause, columns, table, join=None, where=None, group=None, order=None, distinct=False):

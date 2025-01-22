@@ -4,11 +4,13 @@ import numpy as np
 from .util import drop_rows_with_mask
 from .querydef import get_queries
 from .sourcedb import get_database
-from .parse_results import extract_result, parse_numeric_from_free
+from .parse_results import parse_numeric_from_free
 from .annotations import get_annotation_queries
 from collections import defaultdict
 from .parse_hepC_sendout import parse_sendout
 from .args import configure_parser
+from .ai_classify import classify_result
+from tqdm import tqdm
 
 def save_interesting(df, destinationdb):
     table_name = "secret.%s" % df.columns[2].lower()
@@ -145,7 +147,12 @@ def do_queries(virginia, destinationdb):
             burgdorf = df['all_result'].str.contains('BURGDORFERI') & ~df['all_result'].str.contains('WESTERN')
             drop_rows_with_mask(df, burgdorf)
 
-            df['result'] = df['all_result'].apply(extract_result)
+            print("Number of rows y'all trying to do:")
+            print(df.shape[0])
+            lookup = {}
+            for s in tqdm(df['all_result'].unique()):
+                lookup[s] = classify_result(s)
+            df['result'] = df['all_result'].apply(lambda s: lookup[s])
 
             df.drop(columns='all_result', inplace=True)
         df.drop(columns=result_cols, inplace=True)
@@ -185,7 +192,12 @@ def do_queries_chris(virginia, destinationdb):
                 df['all_result'] = df[result_cols[0]]
                 for i in range(1, len(result_cols)):
                     df['all_result'] = df['all_result'] + ' ' + df[result_cols[i]]
-                df['result'] = df['all_result'].apply(extract_result)
+
+                lookup = {}
+                for s in tqdm(df['all_result'].unique()):
+                    lookup[s] = classify_result(s)
+                df['result'] = df['all_result'].apply(lambda s: lookup[s])
+
                 drop_rows_with_mask(df, df['result'] != 'unknown')
                 df = df[['result', 'all_result']]
             df.drop_duplicates(inplace=True)
