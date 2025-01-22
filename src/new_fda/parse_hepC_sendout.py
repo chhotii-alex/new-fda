@@ -3,7 +3,10 @@ import re
 patt = r"HCV RNA, QUANTITATIVE REAL [TIME]* (.*)   NOT DETECTED IU/mL"
 patt = re.compile(patt)
 def parse_sendout(results):
-    s = results.split("\n")[2]
+    try:
+        s = results.split("\n")[2]
+    except:
+         return None
     m = patt.match(s)
     if m:
         substr = m.group(1).strip()
