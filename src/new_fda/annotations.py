@@ -11,6 +11,8 @@ def parse_tobacco_usage(comment):
         return None
     if "UNKNOWN" in comment:
         return None
+    if "TOBACCO USER" in comment:
+        return 'current'
     if "CURRENT" in comment:
         return "current"
     if "EVERY DAY" in comment:
@@ -117,6 +119,8 @@ class SheetFetch:
             self.name = "Weight"
         elif "Height" in result_name:
             self.name = "Height"
+        elif "Pack Years" in result_name:
+            self.name = "pack_years"
         elif "Tobacco" in result_name:
             self.name = "smoking"
         else:
@@ -134,6 +138,7 @@ class SheetFetch:
             f"""result_name = '{self.result_name}'""")
 
 parsers = {'Tobacco': parse_tobacco_usage,
+           'Tobacco Pack Years': parse_starting_num,
            "BMI (kg/m2)": parse_bmi,
     "Bariatric BMI (kg/m2)": parse_bmi,
     "BMI": parse_bmi,

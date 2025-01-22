@@ -1,3 +1,4 @@
+import re
 import importlib.resources
 import pandas as pd
 
@@ -71,4 +72,61 @@ def extract_result(s):
         print(news)
         meaning = 'unknown'
     return meaning
+
+def parse_numeric_from_free(comm):
+    t = comm.upper().strip()
+    t = re.sub(r"\(.*\)", "", t)
+    t = re.sub(r"THIS IS A CORRECTED REPORT.*CHANGED TO", "", t)
+    t = re.sub(r"\d\d?/\d\d?/\d\d(\d\d)?.?", "", t)
+    t = re.sub(r"\d?\d[:\.]\d\d([AP]M)?\.?", "", t)
+    t = re.sub(r"CHANGED FROM .* TO", "", t)
+    t = re.sub(r"^DETECTED", "", t)
+    for bad in [
+            "HIV-1 RNA DETECTED",
+            ",",
+            "HCV RNA DETECTED",
+            "THIS IS AN ADDITIONAL REPORT .",
+            "HBV DNA DETECTED",
+            "@",
+            "THIS IS A CORRECTED REPORT",
+            "HCV VIRAL LOAD END-POINT DETERMINATION.",
+    ]:
+        t = t.replace(bad, "")
+    for orig, subs in [
+            ("*", " "),
+            ("GREATER THAN", " > "),
+            ("LESS THAN", " < "),
+            ("OOO", "000"),
+    ]:
+        t = t.replace(orig, subs)
+    for item in [
+            'IU',
+            "COPIES",
+            "ML",
+            "<",
+            ">"
+            "COP",
+            ">",
+            "COP",
+    ]:
+        t = t.replace(item, " %s " % item)
+    t = t.strip(". AP:")
+    if not len(t):
+            return None
+    words = t.split()
+    factor = 1
+    if words[0] == "<":
+        factor = 1/2
+        words = words[1:]
+    elif words[0] == ">":
+        factor = 2
+        words = words[1:]
+    try:
+        num = float(words[0])
+        # Check that the next thing after the number is a unit:
+        if ("COP" not in words[1]) and ("IU" not in words[1]):
+            return None
+    except:
+            return None
+    return num*factor
 
