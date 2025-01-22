@@ -8,6 +8,7 @@ from .parse_results import extract_result, parse_numeric_from_free
 from .annotations import get_annotation_queries
 from collections import defaultdict
 from .parse_hepC_sendout import parse_sendout
+from .args import configure_parser
 
 def save_interesting(df, destinationdb):
     table_name = "secret.%s" % df.columns[2].lower()
@@ -72,11 +73,11 @@ def do_queries_quant(virginia, destinationdb):
     for query in queries:
         if not query.quantitative: 
             continue
-        if query.where_clause_value == 'Hepatitis C viral RNA, Quantitative, Real Time PCR':
-            pass
         q = query.make_query(virginia)
         print(q)
         df = virginia.do_select(q)
+        if df.shape[0] < 1:
+            print("Warning, no resultss for this query!")
 
         age_at_dx(df)
         df['dx'] = query.dx
@@ -107,6 +108,8 @@ def do_queries_quant(virginia, destinationdb):
         destinationdb.do_inserts(dest_table_name, df, ["mrn", "dx_date", "dx"], True)
 
 def age_at_dx(df):
+    if df.shape[0] < 1:
+        return
     # figure out age at time (clip age at 80 because PHI)
     df.dropna(subset=['dx_date', 'dob'], inplace=True)
     df['age'] = ((df['dx_date'] - df['dob']).dt.days)/365.25
@@ -121,6 +124,8 @@ def do_queries(virginia, destinationdb):
         q = query.make_query(virginia)
         print(q)
         df = virginia.do_select(q)
+        if df.shape[0] < 1:
+            print("Warning, no results for this query!")
 
         age_at_dx(df)
         df['dx'] = query.dx
@@ -239,10 +244,12 @@ def do_distinct_result_queries(virginia):
             f.write('\n\n')
 
 def main():
+    arg = configure_parser()
     virginia = get_database('virginia')
     destinationdb = get_database('newfda')
-    destinationdb.build_schema()
-    print("Built db schema")
+    if arg.redo:
+        destinationdb.build_schema()
+        print("Built db schema")
 
     do_queries(virginia, destinationdb)
     do_queries_quant(virginia, destinationdb)
