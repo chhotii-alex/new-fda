@@ -2,10 +2,24 @@ import re
 
 patt = r"HCV RNA, QUANTITATIVE REAL [TIME]* (.*)   NOT DETECTED IU/mL"
 patt = re.compile(patt)
-def parse(results):
+def parse_sendout(results):
     s = results.split("\n")[2]
     m = patt.match(s)
     if m:
-        return m.group(1).strip()
-    
-#extract = df['comments'].apply(parse)
+        substr = m.group(1).strip()
+    else:
+         return None
+    words = substr.split()
+    factor = 1
+    if words[0] == "<":
+        factor = 1/2
+        words = words[1:]
+    elif words[0] == ">":
+        factor = 2
+        words = words[1:]
+    try:
+        num = float(words[0])
+    except:
+            return None
+    return num*factor
+

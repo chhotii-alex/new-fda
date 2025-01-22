@@ -7,6 +7,7 @@ from .sourcedb import get_database
 from .parse_results import extract_result, parse_numeric_from_free
 from .annotations import get_annotation_queries
 from collections import defaultdict
+from .parse_hepC_sendout import parse_sendout
 
 def save_interesting(df, destinationdb):
     table_name = "secret.%s" % df.columns[2].lower()
@@ -68,96 +69,82 @@ def do_annotation_queries(virginia, destinationdb):
 
 def do_queries_quant(virginia, destinationdb):
     queries = get_queries()
-    all_results = None
     for query in queries:
         if not query.quantitative: 
             continue
         if query.where_clause_value == 'Hepatitis C viral RNA, Quantitative, Real Time PCR':
-            print(query.make_query(virginia))
-            sys.exit(1)
-            continue
+            pass
         q = query.make_query(virginia)
         print(q)
         df = virginia.do_select(q)
 
+        age_at_dx(df)
         df['dx'] = query.dx
+        df.drop_duplicates(subset=["mrn", "dx_date", "dx"], inplace=True)
 
-        if 'result_value_num' in df:
-            drop_rows_with_mask(df, df['result_value_num'].notna())
-        df.drop_duplicates(subset='comments', inplace=True)
-
+        if query.where_clause_value == 'Hepatitis C viral RNA, Quantitative, Real Time PCR':
+            df['result_value_num'] = df['comments'].apply(parse_sendout)
+        if 'result_value_num' not in df:
+            df['result_value_num'] = np.nan
+        has_numeric = df[df['result_value_num'].notna()].copy()
+        has_no_numeric = df[df['result_value_num'].isna()].copy()
+        has_no_numeric.dropna(subset="comments", inplace=True)
+        has_no_numeric['result_value_num'] = has_no_numeric['comments'].apply(parse_numeric_from_free)
+        for subset in [has_numeric, has_no_numeric]:
+            subset.dropna(subset='result_value_num', inplace=True)
+        valid_subsets = [subset for subset in [has_numeric, has_no_numeric] if (subset.shape[0] > 0)]
+        if not len(valid_subsets):
+            print("No numeric results found!!!")
+            continue
+        df = pd.concat(valid_subsets)
         print(df)
-        if all_results is None:
-            all_results = df['comments']
-        else:
-            all_results = pd.concat((all_results, df['comments']))
-        #destinationdb.do_inserts(dest_table_name, df, ["mrn", "dx_date", "dx"], True)
-    #all_results.to_csv("quant_results.csv", index=False)
-    all_results.dropna(inplace=True)
-    all_results.drop_duplicates(inplace=True)
-    all_results.sort_values(inplace=True)
-    counter = 0
-    for i, comm in enumerate(all_results):
-        result = parse_numeric_from_free(comm)
-        if result is None:
-            print(result)
-            print(comm)
-            print()
-            counter += 1
-            #if not (i % 100):
-            #    input("?>")
-    print(counter, " numeric results")
+        result_cols = query.get_result_columns()
+        columns_to_drop = [col for col in result_cols if col != 'result_value_num']
+        df.drop(columns=columns_to_drop, inplace=True)
+        dest_table_name = 'secret.quantresults'
+
+        print(df.head())
+        destinationdb.do_inserts(dest_table_name, df, ["mrn", "dx_date", "dx"], True)
+
+def age_at_dx(df):
+    # figure out age at time (clip age at 80 because PHI)
+    df.dropna(subset=['dx_date', 'dob'], inplace=True)
+    df['age'] = ((df['dx_date'] - df['dob']).dt.days)/365.25
+    df['age'] = df['age'].astype(int)
+    df.loc[(df['age'] > 80), 'age'] = 80
 
 def do_queries(virginia, destinationdb):
     queries = get_queries()
     for query in queries:
-        if not query.quantitative: # DNCI !!! TODO deal with these!!!
+        if query.quantitative: 
             continue
         q = query.make_query(virginia)
         print(q)
         df = virginia.do_select(q)
 
-        # figure out age at time (clip age at 80 because PHI)
-        df.dropna(subset=['dx_date', 'dob'], inplace=True)
-        df['age'] = ((df['dx_date'] - df['dob']).dt.days)/365.25
-        df['age'] = df['age'].astype(int)
-        df.loc[(df['age'] > 80), 'age'] = 80
-
+        age_at_dx(df)
         df['dx'] = query.dx
         df.drop_duplicates(subset=["mrn", "dx_date", "dx"], inplace=True)
 
         result_cols = query.get_result_columns()
-        if query.quantitative: 
-            if 'result_value_num' not in df:
-                df['result_value_num'] = np.nan
-            has_numeric = df[df['result_value_num'].notna()].copy()
-            has_no_numeric = df[df['result_value_num'].isna()].copy()
-            has_no_numeric.dropna(subset="comments", inplace=True)
-            has_no_numeric['result_value_num'] = has_no_numeric['comments'].apply(parse_numeric_from_free)
-            for subset in [has_numeric, has_no_numeric]:
-                subset.dropna(subset='result_value_num', inplace=True)
-            valid_subsets = [subset for subset in [has_numeric, has_no_numeric] if (subset.shape[0] > 0)]
-            if not len(valid_subsets):
-                df.to_excel("irk.xlsx")
-                continue
-            df = pd.concat(valid_subsets)
-            print(df)
-            columns_to_drop = [col for col in result_cols if col != 'result_value_num']
-            df.drop(columns=columns_to_drop, inplace=True)
-            dest_table_name = 'secret.quantresults'
+        if query.table_name == 'vwMICRO_Organisms':
+            df['result'] = 'positive'
         else:
-            if query.table_name == 'vwMICRO_Organisms':
-                df['result'] = 'positive'
-            else:
-                for col in result_cols:
-                    df[col] = df[col].fillna('')
-                df['all_result'] = df[result_cols[0]]
-                for i in range(1, len(result_cols)):
-                    df['all_result'] = df['all_result'] + ' ' + df[result_cols[i]]
-                df['result'] = df['all_result'].apply(extract_result)
-                df.drop(columns='all_result', inplace=True)
-            df.drop(columns=result_cols, inplace=True)
-            dest_table_name = 'secret.results'
+            for col in result_cols:
+                df[col] = df[col].fillna('')
+            df['all_result'] = df[result_cols[0]]
+            for i in range(1, len(result_cols)):
+                df['all_result'] = df['all_result'] + ' ' + df[result_cols[i]]
+
+            # This is really bad separation of concerns to put this here, but delete all non-WesternBlot Lyme results
+            burgdorf = df['all_result'].str.contains('BURGDORFERI') & ~df['all_result'].str.contains('WESTERN')
+            drop_rows_with_mask(df, burgdorf)
+
+            df['result'] = df['all_result'].apply(extract_result)
+
+            df.drop(columns='all_result', inplace=True)
+        df.drop(columns=result_cols, inplace=True)
+        dest_table_name = 'secret.results'
         print(df)
         destinationdb.do_inserts(dest_table_name, df, ["mrn", "dx_date", "dx"], True)
 
@@ -181,11 +168,8 @@ def do_queries_chris(virginia, destinationdb):
         df.drop_duplicates(subset=["mrn", "dx_date", "dx"], inplace=True)
 
         result_cols = query.get_result_columns()
-        if query.quantitative: 
+        if query.quantitative:
             continue
-            if query.table_name == 'vwLAB_Result':
-                pass
-            dest_table_name = 'secret.quantresults'
         else:
             if query.table_name == 'vwMICRO_Organisms':
                 df['result'] = 'positive'
@@ -257,7 +241,10 @@ def do_distinct_result_queries(virginia):
 def main():
     virginia = get_database('virginia')
     destinationdb = get_database('newfda')
+    destinationdb.build_schema()
+    print("Built db schema")
 
-    #do_queries(virginia, destinationdb)
+    do_queries(virginia, destinationdb)
+    do_queries_quant(virginia, destinationdb)
     do_annotation_queries(virginia, destinationdb)
     #do_distinct_result_queries(virginia)

@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine
+from sqlalchemy.sql import text
 from .cache import ResultsCacher
 from .encoding import get_encode_keys
 from sqlalchemy.dialects.postgresql import insert
@@ -156,6 +157,115 @@ class DestinationDatabase(PostgresDatabase):
             return super().get_port()
         else:
             return 5435
+
+
+    def build_schema(self):
+        with self.engine.connect() as con:
+            for statement in [
+                """
+                    DROP TABLE IF EXISTS "secret.bmi";
+                """,
+                """
+    CREATE TABLE "public"."secret.bmi" (
+    "mrn" character(11) NOT NULL,
+    "dx_date" timestamp NOT NULL,
+    "bmi" double precision
+) WITH (oids = false);
+                """,
+                """
+            CREATE INDEX "ix_secret.bmi_dx_date" ON "public"."secret.bmi" USING btree ("dx_date");
+                """,
+                """
+CREATE INDEX "ix_secret.bmi_mrn" ON "public"."secret.bmi" USING btree ("mrn");
+
+                """,
+                """
+    ALTER TABLE "public"."secret.bmi"
+    ADD CONSTRAINT unique_keys_bmi UNIQUE(mrn, dx_date);
+                """,
+                """
+DROP TABLE IF EXISTS "secret.quantresults";
+                """,
+                """
+CREATE TABLE "public"."secret.quantresults" (
+    "mrn" character(11) NOT NULL,
+    "dx_date" timestamp NOT NULL,
+    "dx" text NOT NULL,
+    "gender" character(1),
+    "dob" timestamp,
+    "pat_type_full" text,
+    "age" smallint,
+    "result_value_num" double precision
+) WITH (oids = false);
+
+                """,
+                """
+CREATE INDEX "ix_secret.quantresults_dx" ON "public"."secret.quantresults" USING btree ("dx");
+                """,
+                """
+CREATE INDEX "ix_secret.quantresults_dx_date" ON "public"."secret.quantresults" USING btree ("dx_date");
+                """,
+                """
+CREATE INDEX "ix_secret.quantresults_mrn" ON "public"."secret.quantresults" USING btree ("mrn");
+                """,
+                """
+    ALTER TABLE "public"."secret.quantresults"
+    ADD CONSTRAINT unique_keys_quantresults UNIQUE(mrn, dx_date, dx);
+                """,
+                """
+DROP TABLE IF EXISTS "secret.results";
+                """,
+                """
+CREATE TABLE "public"."secret.results" (
+    "mrn" character(11) NOT NULL,
+    "dx_date" timestamp NOT NULL,
+    "dx" text NOT NULL,
+    "gender" character(1),
+    "dob" timestamp,
+    "pat_type_full" text,
+    "age" smallint,
+    "result" text
+) WITH (oids = false);
+                """,
+                """
+CREATE INDEX "ix_secret.results_dx" ON "public"."secret.results" USING btree ("dx");
+                """,
+                """
+CREATE INDEX "ix_secret.results_dx_date" ON "public"."secret.results" USING btree ("dx_date");
+                """,
+                """
+CREATE INDEX "ix_secret.results_mrn" ON "public"."secret.results" USING btree ("mrn");
+                """,
+                """
+    ALTER TABLE "public"."secret.results"
+    ADD CONSTRAINT unique_keys_results UNIQUE(mrn, dx_date, dx);
+                """,
+                """
+DROP TABLE IF EXISTS "secret.smoking";
+                """,
+                """
+CREATE TABLE "public"."secret.smoking" (
+    "mrn" character(11) NOT NULL,
+    "dx_date" timestamp NOT NULL,
+    "smoking" text
+) WITH (oids = false);
+                """,
+                """
+CREATE INDEX "ix_secret.smoking_dx_date" ON "public"."secret.smoking" USING btree ("dx_date");
+                """,
+                """
+CREATE INDEX "ix_secret.smoking_mrn" ON "public"."secret.smoking" USING btree ("mrn");
+                """,
+                """
+    ALTER TABLE "public"."secret.smoking"
+    ADD CONSTRAINT unique_keys_smoking UNIQUE(mrn, dx_date);
+                """,
+            ]:
+                con.execute(text(statement))
+                con.commit()
+                print("Did statement:")
+                print(statement)
+                print()
     
     """
     Add something like this to database creation schema: 
@@ -168,9 +278,6 @@ class DestinationDatabase(PostgresDatabase):
     """
     def do_inserts(self, table_name, df, index_cols, first_time=False):
         df = df.groupby(index_cols).first()
-        if first_time:
-            df.to_sql(name=table_name, con=self.engine, if_exists='append')
-            return
         def insert_on_conflict_nothing(table, conn, keys, data_iter):
             data = [dict(zip(keys, row)) for row in data_iter]
             stmt = insert(table.table).values(data).on_conflict_do_nothing(index_elements=index_cols)
