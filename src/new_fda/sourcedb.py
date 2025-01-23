@@ -102,7 +102,7 @@ class PostgresDatabase(Database):
             where_clause = f"WHERE {where}"
         return f"""SELECT {distinct_clause}
              {columns}
-           FROM "{table}"
+           FROM {table}
            {join_clause}
            {where_clause}
             {group_clause}
@@ -170,31 +170,31 @@ class DestinationDatabase(PostgresDatabase):
         with self.engine.connect() as con:
             for statement in [
                 """
-                    DROP TABLE IF EXISTS "secret.bmi";
+                    DROP TABLE IF EXISTS "bmi";
                 """,
                 """
-    CREATE TABLE "public"."secret.bmi" (
+    CREATE TABLE "public"."bmi" (
     "mrn" character(11) NOT NULL,
     "dx_date" timestamp NOT NULL,
     "bmi" double precision
 ) WITH (oids = false);
                 """,
                 """
-            CREATE INDEX "ix_secret.bmi_dx_date" ON "public"."secret.bmi" USING btree ("dx_date");
+            CREATE INDEX "ix_bmi_dx_date" ON "public"."bmi" USING btree ("dx_date");
                 """,
                 """
-CREATE INDEX "ix_secret.bmi_mrn" ON "public"."secret.bmi" USING btree ("mrn");
+CREATE INDEX "ix_bmi_mrn" ON "public"."bmi" USING btree ("mrn");
 
                 """,
                 """
-    ALTER TABLE "public"."secret.bmi"
+    ALTER TABLE "public"."bmi"
     ADD CONSTRAINT unique_keys_bmi UNIQUE(mrn, dx_date);
                 """,
                 """
-DROP TABLE IF EXISTS "secret.quantresults";
+DROP TABLE IF EXISTS "quantresults";
                 """,
                 """
-CREATE TABLE "public"."secret.quantresults" (
+CREATE TABLE "public"."quantresults" (
     "mrn" character(11) NOT NULL,
     "dx_date" timestamp NOT NULL,
     "dx" text NOT NULL,
@@ -207,23 +207,23 @@ CREATE TABLE "public"."secret.quantresults" (
 
                 """,
                 """
-CREATE INDEX "ix_secret.quantresults_dx" ON "public"."secret.quantresults" USING btree ("dx");
+CREATE INDEX "ix_quantresults_dx" ON "public"."quantresults" USING btree ("dx");
                 """,
                 """
-CREATE INDEX "ix_secret.quantresults_dx_date" ON "public"."secret.quantresults" USING btree ("dx_date");
+CREATE INDEX "ix_quantresults_dx_date" ON "public"."quantresults" USING btree ("dx_date");
                 """,
                 """
-CREATE INDEX "ix_secret.quantresults_mrn" ON "public"."secret.quantresults" USING btree ("mrn");
+CREATE INDEX "ix_quantresults_mrn" ON "public"."quantresults" USING btree ("mrn");
                 """,
                 """
-    ALTER TABLE "public"."secret.quantresults"
+    ALTER TABLE "public"."quantresults"
     ADD CONSTRAINT unique_keys_quantresults UNIQUE(mrn, dx_date, dx);
                 """,
                 """
-DROP TABLE IF EXISTS "secret.results";
+DROP TABLE IF EXISTS "results";
                 """,
                 """
-CREATE TABLE "public"."secret.results" (
+CREATE TABLE "public"."results" (
     "mrn" character(11) NOT NULL,
     "dx_date" timestamp NOT NULL,
     "dx" text NOT NULL,
@@ -235,37 +235,55 @@ CREATE TABLE "public"."secret.results" (
 ) WITH (oids = false);
                 """,
                 """
-CREATE INDEX "ix_secret.results_dx" ON "public"."secret.results" USING btree ("dx");
+CREATE INDEX "ix_results_dx" ON "public"."results" USING btree ("dx");
                 """,
                 """
-CREATE INDEX "ix_secret.results_dx_date" ON "public"."secret.results" USING btree ("dx_date");
+CREATE INDEX "ix_results_dx_date" ON "public"."results" USING btree ("dx_date");
                 """,
                 """
-CREATE INDEX "ix_secret.results_mrn" ON "public"."secret.results" USING btree ("mrn");
+CREATE INDEX "ix_results_mrn" ON "public"."results" USING btree ("mrn");
                 """,
                 """
-    ALTER TABLE "public"."secret.results"
+    ALTER TABLE "public"."results"
     ADD CONSTRAINT unique_keys_results UNIQUE(mrn, dx_date, dx);
                 """,
                 """
-DROP TABLE IF EXISTS "secret.smoking";
+DROP TABLE IF EXISTS "smoking";
                 """,
                 """
-CREATE TABLE "public"."secret.smoking" (
+CREATE TABLE "public"."smoking" (
     "mrn" character(11) NOT NULL,
     "dx_date" timestamp NOT NULL,
     "smoking" text
 ) WITH (oids = false);
                 """,
                 """
-CREATE INDEX "ix_secret.smoking_dx_date" ON "public"."secret.smoking" USING btree ("dx_date");
+CREATE INDEX "ix_smoking_dx_date" ON "public"."smoking" USING btree ("dx_date");
                 """,
                 """
-CREATE INDEX "ix_secret.smoking_mrn" ON "public"."secret.smoking" USING btree ("mrn");
+CREATE INDEX "ix_smoking_mrn" ON "public"."smoking" USING btree ("mrn");
                 """,
                 """
-    ALTER TABLE "public"."secret.smoking"
+    ALTER TABLE "public"."smoking"
     ADD CONSTRAINT unique_keys_smoking UNIQUE(mrn, dx_date);
+                """,
+
+
+                """
+DROP TABLE IF EXISTS "race";
+                """,
+                """
+CREATE TABLE "public"."race" (
+    "mrn" character(11) NOT NULL,
+    "race" character(2)
+) WITH (oids = false);
+                """,
+                """
+CREATE INDEX "ix_race_mrn" ON "public"."race" USING btree ("mrn");
+                """,
+                """
+    ALTER TABLE "public"."race"
+    ADD CONSTRAINT unique_keys_race UNIQUE(mrn);
                 """,
             ]:
                 con.execute(text(statement))
@@ -276,7 +294,7 @@ CREATE INDEX "ix_secret.smoking_mrn" ON "public"."secret.smoking" USING btree ("
     
     """
     Add something like this to database creation schema: 
-    ALTER TABLE "secret.results"
+    ALTER TABLE "results"
     ADD CONSTRAINT unique_keys UNIQUE(mrn, dx_date, dx);
     See:
     https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html

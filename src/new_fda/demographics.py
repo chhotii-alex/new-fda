@@ -1,3 +1,4 @@
+import pandas as pd
 
 # The race/ethnicity/national origin data in the registration table
 # is a complete mess.
@@ -47,16 +48,20 @@ def code_ethnicity(ethnic_cd, hispanic_ind, race, race_full, ethnicity):
             return "WH"
     return None
 
-def get_demographic_queries(db, limit=None):
+def get_demographics(db, limit=None):
     limit_clause = db.make_limit_clause(limit)
-    columns = ['mrn', 'race', 'race_full', 'race_desc']
-    q = db.order_select_query(limit_clause, columns, 'vwADT_Admissions', join=None, where=None, group=None, order=None, distinct=False)
+    columns = ", ".join(['mrn', 'race', 'race_full', 'race_desc'])
+    q = db.order_select_query(limit_clause, columns, 'vwADT_Admissions',
+                              join=None, where=None,
+                              group=None, order=None, distinct=False)
+    print(q)
     df = db.do_select(q)
-    df.apply(lambda row: print(row))
-    """  SELECT 
-	        cast (mrn as bigint) mrn,
-            race ethnic_cd,
-            race_full,
-            SUBSTRING(race_desc, 1, 20) ethnicity
-        FROM vwADT_Admissions
-        """
+    print(df)
+    print("Apply>..")
+    f = lambda row: code_ethnicity(None, None, row.race, row.race_full, row.race_desc)
+    df['race'] = df.apply(f, 1)
+    df.dropna(subset='race', inplace=True, ignore_index=True)
+    df.drop_duplicates(subset='mrn', inplace=True, ignore_index=True)
+    df.drop(columns=['race_full', 'race_desc'], inplace=True)
+    return df
+

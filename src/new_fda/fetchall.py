@@ -11,21 +11,28 @@ from .parse_hepC_sendout import parse_sendout
 from .args import configure_parser
 from .ai_classify import classify_result
 from tqdm import tqdm
-from .demographics import get_demographic_queries
+from .demographics import get_demographics
 
-def save_interesting(df, destinationdb):
-    table_name = "secret.%s" % df.columns[2].lower()
-    q = destinationdb.order_select_query(limit_clause=None, columns='mrn, dx_date', table='secret.results', join=None, where=None, group=None, order=None, distinct=True)
+def save_interesting(df, destinationdb, key_columns=['mrn', 'dx_date']):
+    novel_columns = [col for col in df.columns if col not in key_columns]
+    table_name = "%s" % novel_columns[0].lower()
+    q = destinationdb.order_select_query(limit_clause=None,
+                                         columns=", ".join(key_columns),
+                                         table='results', join=None,
+                                         where=None, group=None,
+                                         order=None, distinct=True)
     results = destinationdb.do_select(q)
     m = pd.merge(results, df, on='mrn', how='left')
     m.dropna(inplace=True)
-    m['diff'] = (m['dx_date'] - m['result_dt']).dt.days
-    drop_rows_with_mask(m, (m['diff'] < -30))
-    m['diff'] = m['diff'].abs()
-    m.sort_values(by='diff', inplace=True)
-    m.drop_duplicates(subset=['mrn', 'dx_date'], inplace=True)
-    m.drop(columns=['diff', 'result_dt'], inplace=True)
-    destinationdb.do_inserts(table_name, m, list(m.columns[:2]), True)
+    print(m.dtypes)
+    if 'dx_date' in key_columns:
+        m['diff'] = (m['dx_date'] - m['result_dt']).dt.days
+        drop_rows_with_mask(m, (m['diff'] < -30))
+        m['diff'] = m['diff'].abs()
+        m.sort_values(by='diff', inplace=True)
+        m.drop(columns=['diff', 'result_dt'], inplace=True)
+    m.drop_duplicates(subset=key_columns, inplace=True)
+    destinationdb.do_inserts(table_name, m, key_columns, True)
 
 def do_annotation_queries(virginia, destinationdb):
     data_by_type = defaultdict(list)
@@ -105,7 +112,7 @@ def do_queries_quant(virginia, destinationdb):
         result_cols = query.get_result_columns()
         columns_to_drop = [col for col in result_cols if col != 'result_value_num']
         df.drop(columns=columns_to_drop, inplace=True)
-        dest_table_name = 'secret.quantresults'
+        dest_table_name = 'quantresults'
 
         print(df.head())
         destinationdb.do_inserts(dest_table_name, df, ["mrn", "dx_date", "dx"], True)
@@ -157,7 +164,7 @@ def do_queries(virginia, destinationdb):
 
             df.drop(columns='all_result', inplace=True)
         df.drop(columns=result_cols, inplace=True)
-        dest_table_name = 'secret.results'
+        dest_table_name = 'results'
         print(df)
         destinationdb.do_inserts(dest_table_name, df, ["mrn", "dx_date", "dx"], True)
 
@@ -206,7 +213,7 @@ def do_queries_chris(virginia, destinationdb):
                 all_df = df
             else:
                 all_df = pd.concat((all_df, df))
-            dest_table_name = 'secret.results'
+            dest_table_name = 'results'
         print(all_df)
         #destinationdb.do_inserts(dest_table_name, df, ["mrn", "dx_date", "dx"], True)
     all_df.sort_values(by=['result', 'all_result'], inplace=True)
@@ -264,8 +271,9 @@ def main():
         destinationdb.build_schema()
         print("Built db schema")
 
-    #do_queries(virginia, destinationdb)
-    get_demographic_queries(virginia, 100)
-    #do_queries_quant(virginia, destinationdb)
+    do_queries(virginia, destinationdb)
+    do_queries_quant(virginia, destinationdb)
+    save_interesting(get_demographics(virginia), destinationdb,
+                     key_columns=['mrn'])
     #do_annotation_queries(virginia, destinationdb)
     #do_distinct_result_queries(virginia)
