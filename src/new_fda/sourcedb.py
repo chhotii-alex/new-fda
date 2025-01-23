@@ -33,6 +33,8 @@ class Database:
 
     def do_select(self, query_text):
         results = self._do_select(query_text)
+        print("Raw results for: %s" % query_text)
+        print(results)
         if 'mrn' in results.columns:
             results.dropna(subset='mrn', inplace=True)
             results['mrn'] = pd.to_numeric(results['mrn'], errors='coerce',

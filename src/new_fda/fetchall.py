@@ -14,17 +14,16 @@ from tqdm import tqdm
 from .demographics import get_demographics
 
 def save_interesting(df, destinationdb, key_columns=['mrn', 'dx_date']):
-    novel_columns = [col for col in df.columns if col not in key_columns]
-    table_name = "%s" % novel_columns[0].lower()
-    q = destinationdb.order_select_query(limit_clause=None,
+    def get_all_results(table):
+        q = destinationdb.order_select_query(limit_clause=None,
                                          columns=", ".join(key_columns),
-                                         table='results', join=None,
+                                         table=table, join=None,
                                          where=None, group=None,
                                          order=None, distinct=True)
-    results = destinationdb.do_select(q)
+        return destinationdb.do_select(q)
+    results = pd.concat([get_all_results(t) for t in ['results', 'quantresults']])
     m = pd.merge(results, df, on='mrn', how='left')
     m.dropna(inplace=True)
-    print(m.dtypes)
     if 'dx_date' in key_columns:
         m['diff'] = (m['dx_date'] - m['result_dt']).dt.days
         drop_rows_with_mask(m, (m['diff'] < -30))
@@ -32,6 +31,8 @@ def save_interesting(df, destinationdb, key_columns=['mrn', 'dx_date']):
         m.sort_values(by='diff', inplace=True)
         m.drop(columns=['diff', 'result_dt'], inplace=True)
     m.drop_duplicates(subset=key_columns, inplace=True)
+    novel_columns = [col for col in m.columns if col not in key_columns]
+    table_name = "%s" % novel_columns[0].lower()
     destinationdb.do_inserts(table_name, m, key_columns, True)
 
 def do_annotation_queries(virginia, destinationdb):
@@ -46,7 +47,6 @@ def do_annotation_queries(virginia, destinationdb):
         df.dropna(inplace=True)
         df.drop(columns='result_value', inplace=True)
         data_by_type[result_name].append(df)
-        print(df)
     for key in data_by_type.keys():
         df = pd.concat(data_by_type[key])
         df.drop_duplicates(subset=['mrn', 'result_dt'], inplace=True)
@@ -88,7 +88,6 @@ def do_queries_quant(virginia, destinationdb):
         df = virginia.do_select(q)
         if df.shape[0] < 1:
             print("Warning, no resultss for this query!")
-
         age_at_dx(df)
         df['dx'] = query.dx
         df.drop_duplicates(subset=["mrn", "dx_date", "dx"], inplace=True)
@@ -108,13 +107,11 @@ def do_queries_quant(virginia, destinationdb):
             print("No numeric results found!!!")
             continue
         df = pd.concat(valid_subsets)
-        print(df)
         result_cols = query.get_result_columns()
         columns_to_drop = [col for col in result_cols if col != 'result_value_num']
         df.drop(columns=columns_to_drop, inplace=True)
         dest_table_name = 'quantresults'
 
-        print(df.head())
         destinationdb.do_inserts(dest_table_name, df, ["mrn", "dx_date", "dx"], True)
 
 def age_at_dx(df):
@@ -165,7 +162,6 @@ def do_queries(virginia, destinationdb):
             df.drop(columns='all_result', inplace=True)
         df.drop(columns=result_cols, inplace=True)
         dest_table_name = 'results'
-        print(df)
         destinationdb.do_inserts(dest_table_name, df, ["mrn", "dx_date", "dx"], True)
 
 def do_queries_chris(virginia, destinationdb):
@@ -275,5 +271,5 @@ def main():
     do_queries_quant(virginia, destinationdb)
     save_interesting(get_demographics(virginia), destinationdb,
                      key_columns=['mrn'])
-    #do_annotation_queries(virginia, destinationdb)
+    do_annotation_queries(virginia, destinationdb)
     #do_distinct_result_queries(virginia)
