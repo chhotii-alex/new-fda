@@ -12,8 +12,9 @@ from .args import configure_parser
 from .ai_classify import classify_result
 from tqdm import tqdm
 from .demographics import get_demographics
+from .pregnancy import get_delivery_records, get_pregnancy_records
 
-def save_interesting(df, destinationdb, key_columns=['mrn', 'dx_date']):
+def get_mrn_dates(destinationdb, key_columns=['mrn', 'dx_date']):
     def get_all_results(table):
         q = destinationdb.order_select_query(limit_clause=None,
                                          columns=", ".join(key_columns),
@@ -22,6 +23,10 @@ def save_interesting(df, destinationdb, key_columns=['mrn', 'dx_date']):
                                          order=None, distinct=True)
         return destinationdb.do_select(q)
     results = pd.concat([get_all_results(t) for t in ['results', 'quantresults']])
+    return results
+
+def save_interesting(df, destinationdb, key_columns=['mrn', 'dx_date']):
+    results = get_mrn_dates(destinationdb, key_columns=key_columns)
     m = pd.merge(results, df, on='mrn', how='left')
     m.dropna(inplace=True)
     if 'dx_date' in key_columns:
@@ -259,17 +264,33 @@ def do_distinct_result_queries(virginia):
             f.write(s)
             f.write('\n\n')
 
+def annotate_pregnancy(virginia, condor, destinationdb):
+    pregs = pd.concat( (get_pregnancy_records(condor),
+                        get_delivery_records(virginia)) )
+    print(pregs)
+    results = get_mrn_dates(destinationdb)
+    m = pd.merge(results, pregs, on='mrn', how='inner')
+    filter = (m['start_date'] <= m['dx_date']) & (m['end_date'] >= m['dx_date'])
+    m = m[filter].copy()
+    m['pregnancy'] = True
+    m.drop(columns=['start_date', 'end_date'], inplace=True)
+    m.drop_duplicates(inplace=True)
+    destinationdb.do_inserts('pregnancy', m, ['mrn', 'dx_date'])
+    
+
 def main():
     arg = configure_parser()
     virginia = get_database('virginia')
+    condor = get_database('condor')
     destinationdb = get_database('newfda')
     if arg.redo:
         destinationdb.build_schema()
         print("Built db schema")
 
-    do_queries(virginia, destinationdb)
-    do_queries_quant(virginia, destinationdb)
-    save_interesting(get_demographics(virginia), destinationdb,
-                     key_columns=['mrn'])
-    do_annotation_queries(virginia, destinationdb)
-    #do_distinct_result_queries(virginia)
+    if True:
+        do_queries(virginia, destinationdb)
+        do_queries_quant(virginia, destinationdb)
+        save_interesting(get_demographics(virginia), destinationdb,
+                         key_columns=['mrn'])
+        do_annotation_queries(virginia, destinationdb)
+    annotate_pregnancy(virginia, condor, destinationdb)

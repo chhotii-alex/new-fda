@@ -33,8 +33,6 @@ class Database:
 
     def do_select(self, query_text):
         results = self._do_select(query_text)
-        print("Raw results for: %s" % query_text)
-        print(results)
         if 'mrn' in results.columns:
             results.dropna(subset='mrn', inplace=True)
             results['mrn'] = pd.to_numeric(results['mrn'], errors='coerce',
@@ -191,6 +189,27 @@ CREATE INDEX "ix_bmi_mrn" ON "public"."bmi" USING btree ("mrn");
                 """
     ALTER TABLE "public"."bmi"
     ADD CONSTRAINT unique_keys_bmi UNIQUE(mrn, dx_date);
+                """,
+                """
+                    DROP TABLE IF EXISTS "pregnancy";
+                """,
+                """
+    CREATE TABLE "public"."pregnancy" (
+    "mrn" character(11) NOT NULL,
+    "dx_date" timestamp NOT NULL,
+    "pregnancy" boolean
+) WITH (oids = false);
+                """,
+                """
+            CREATE INDEX "ix_pregnancy_dx_date" ON "public"."pregnancy" USING btree ("dx_date");
+                """,
+                """
+CREATE INDEX "ix_pregnancy_mrn" ON "public"."pregnancy" USING btree ("mrn");
+
+                """,
+                """
+    ALTER TABLE "public"."pregnancy"
+    ADD CONSTRAINT unique_keys_pregnancy UNIQUE(mrn, dx_date);
                 """,
                 """
 DROP TABLE IF EXISTS "quantresults";
