@@ -65,3 +65,15 @@ def get_demographics(db, limit=None):
     df.drop(columns=['race_full', 'race_desc'], inplace=True)
     return df
 
+def get_demographics2(db):
+    columns = "mrn, ethnic_cd, hispanic_ind, race, ethnicity"
+    table = "REGISTRATION_REF"
+    q = db.order_select_query("", columns, table)
+    df = db.do_select(q)
+    print(df)
+    f = lambda row: code_ethnicity(row.ethnic_cd, row.hispanic_ind, row.race, None, row.ethnicity)
+    df['race'] = df.apply(f, 1)
+    df.dropna(subset='race', inplace=True, ignore_index=True)
+    df.drop_duplicates(subset='mrn', inplace=True, ignore_index=True)
+    return df[['mrn', 'race']]
+

@@ -11,7 +11,7 @@ from .parse_hepC_sendout import parse_sendout
 from .args import configure_parser
 from .ai_classify import classify_result
 from tqdm import tqdm
-from .demographics import get_demographics
+from .demographics import get_demographics, get_demographics2
 from .pregnancy import get_delivery_records, get_pregnancy_records
 
 def get_mrn_dates(destinationdb, key_columns=['mrn', 'dx_date']):
@@ -277,6 +277,13 @@ def annotate_pregnancy(virginia, condor, destinationdb):
     m.drop_duplicates(inplace=True)
     destinationdb.do_inserts('pregnancy', m, ['mrn', 'dx_date'])
     
+def do_demographics(virginia, condor, destinationdb):
+    df = pd.concat((get_demographics(virginia),
+                    get_demographics2(condor)))
+    df.drop_duplicates(inplace=True)
+    save_interesting(df, destinationdb,
+                         key_columns=['mrn'])
+    
 
 def main():
     arg = configure_parser()
@@ -287,10 +294,9 @@ def main():
         destinationdb.build_schema()
         print("Built db schema")
 
-    if True:
+    if False:
         do_queries(virginia, destinationdb)
         do_queries_quant(virginia, destinationdb)
-        save_interesting(get_demographics(virginia), destinationdb,
-                         key_columns=['mrn'])
-        do_annotation_queries(virginia, destinationdb)
+    do_demographics(virginia, condor, destinationdb)
+    do_annotation_queries(virginia, destinationdb)
     annotate_pregnancy(virginia, condor, destinationdb)
