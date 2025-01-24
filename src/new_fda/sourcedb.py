@@ -131,7 +131,7 @@ class SQLServerDatabase(Database):
         if where is None:
             where_clause = ''
         else:
-            where_clause = f'WHERE {where_clause}'
+            where_clause = f'WHERE {where}'
         if join is None:
             join_clause = ''
         else:

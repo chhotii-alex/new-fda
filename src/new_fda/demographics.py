@@ -51,15 +51,14 @@ def code_ethnicity(ethnic_cd, hispanic_ind, race, race_full, ethnicity):
 def get_demographics(db, limit=None):
     limit_clause = db.make_limit_clause(limit)
     columns = ", ".join(['mrn', 'race', 'race_full', 'race_desc'])
-    q = db.order_select_query(limit_clause, columns, 'vwADT_Admissions',
+    table = db.get_prefix() + 'vwADT_Admissions'
+    q = db.order_select_query(limit_clause, columns, table,
                               join=None, where=None,
                               group=None, order=None, distinct=False)
-    print(q)
     df = db.do_select(q)
-    print(df)
-    print("Apply>..")
+    print("parsing race/ethnicity...")
     f = lambda row: code_ethnicity(None, None, row.race, row.race_full, row.race_desc)
-    df['race'] = df.apply(f, 1)
+    df['race'] = df.progress_apply(f, axis=1)
     df.dropna(subset='race', inplace=True, ignore_index=True)
     df.drop_duplicates(subset='mrn', inplace=True, ignore_index=True)
     df.drop(columns=['race_full', 'race_desc'], inplace=True)
@@ -67,12 +66,12 @@ def get_demographics(db, limit=None):
 
 def get_demographics2(db):
     columns = "mrn, ethnic_cd, hispanic_ind, race, ethnicity"
-    table = "REGISTRATION_REF"
+    table = db.get_prefix() + "REGISTRATION_REF"
     q = db.order_select_query("", columns, table)
     df = db.do_select(q)
-    print(df)
     f = lambda row: code_ethnicity(row.ethnic_cd, row.hispanic_ind, row.race, None, row.ethnicity)
-    df['race'] = df.apply(f, 1)
+    print("Parsing race/ethnicity...")
+    df['race'] = df.progress_apply(f, axis=1)
     df.dropna(subset='race', inplace=True, ignore_index=True)
     df.drop_duplicates(subset='mrn', inplace=True, ignore_index=True)
     return df[['mrn', 'race']]

@@ -44,11 +44,12 @@ def do_annotation_queries(virginia, destinationdb):
     data_by_type = defaultdict(list)
     for query, parser in get_annotation_queries():
         result_name = query.name
-        q = query.make_query(virginia, 9000)  # TODO remove the limit
+        q = query.make_query(virginia)  
         print(q)
         df = virginia.do_select(q)
         df.dropna(inplace=True)
-        df[result_name] = df['result_value'].apply(parser)
+        print("Parsing %s results..." % result_name)
+        df[result_name] = df['result_value'].progress_apply(parser)
         df.dropna(inplace=True)
         df.drop(columns='result_value', inplace=True)
         data_by_type[result_name].append(df)
@@ -104,7 +105,8 @@ def do_queries_quant(virginia, destinationdb):
         has_numeric = df[df['result_value_num'].notna()].copy()
         has_no_numeric = df[df['result_value_num'].isna()].copy()
         has_no_numeric.dropna(subset="comments", inplace=True)
-        has_no_numeric['result_value_num'] = has_no_numeric['comments'].apply(parse_numeric_from_free)
+        print("Parsing numeric results out of comment texts...")
+        has_no_numeric['result_value_num'] = has_no_numeric['comments'].progress_apply(parse_numeric_from_free)
         for subset in [has_numeric, has_no_numeric]:
             subset.dropna(subset='result_value_num', inplace=True)
         valid_subsets = [subset for subset in [has_numeric, has_no_numeric] if (subset.shape[0] > 0)]
@@ -267,7 +269,6 @@ def do_distinct_result_queries(virginia):
 def annotate_pregnancy(virginia, condor, destinationdb):
     pregs = pd.concat( (get_pregnancy_records(condor),
                         get_delivery_records(virginia)) )
-    print(pregs)
     results = get_mrn_dates(destinationdb)
     m = pd.merge(results, pregs, on='mrn', how='inner')
     filter = (m['start_date'] <= m['dx_date']) & (m['end_date'] >= m['dx_date'])
@@ -286,6 +287,8 @@ def do_demographics(virginia, condor, destinationdb):
     
 
 def main():
+    tqdm.pandas()
+
     arg = configure_parser()
     virginia = get_database('virginia')
     condor = get_database('condor')
@@ -297,6 +300,6 @@ def main():
     if False:
         do_queries(virginia, destinationdb)
         do_queries_quant(virginia, destinationdb)
-    do_demographics(virginia, condor, destinationdb)
-    do_annotation_queries(virginia, destinationdb)
+        do_demographics(virginia, condor, destinationdb)
+        do_annotation_queries(virginia, destinationdb)
     annotate_pregnancy(virginia, condor, destinationdb)
