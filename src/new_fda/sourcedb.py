@@ -223,7 +223,8 @@ CREATE TABLE "public"."quantresults" (
     "dob" timestamp,
     "pat_type_full" text,
     "age" smallint,
-    "result_value_num" double precision
+    "result_value_num" double precision,
+    "units" text
 ) WITH (oids = false);
 
                 """,

@@ -4,7 +4,7 @@ import numpy as np
 from .util import drop_rows_with_mask
 from .querydef import get_queries
 from .sourcedb import get_database
-from .parse_results import parse_numeric_from_free
+from .parse_results import parse_numeric_from_free_u, parse_numeric_from_free_nu, parse_units
 from .annotations import get_annotation_queries
 from collections import defaultdict
 from .parse_hepC_sendout import parse_sendout
@@ -100,22 +100,42 @@ def do_queries_quant(virginia, destinationdb):
 
         if query.where_clause_value == 'Hepatitis C viral RNA, Quantitative, Real Time PCR':
             df['result_value_num'] = df['comments'].apply(parse_sendout)
+            df['units'] = 'UI/mL'
         if 'result_value_num' not in df:
             df['result_value_num'] = np.nan
-        has_numeric = df[df['result_value_num'].notna()].copy()
-        has_no_numeric = df[df['result_value_num'].isna()].copy()
+        def split_df(df):
+            has_numeric = df[df['result_value_num'].notna()].copy()
+            has_no_numeric = df[df['result_value_num'].isna()].copy()
+            return has_numeric, has_no_numeric
+        def unite_df(has_numeric, has_no_numeric):
+            valid_subsets = [subset for subset in [has_numeric, has_no_numeric] if (subset.shape[0] > 0)]
+            return pd.concat(valid_subsets)
+        has_numeric, has_no_numeric = split_df(df)
+        # The text_result column is never actually used for any of our "quantitative" of interest
+        # For those records that have comments, try to parse out a number
         has_no_numeric.dropna(subset="comments", inplace=True)
         print("Parsing numeric results out of comment texts...")
-        has_no_numeric['result_value_num'] = has_no_numeric['comments'].progress_apply(parse_numeric_from_free)
-        for subset in [has_numeric, has_no_numeric]:
-            subset.dropna(subset='result_value_num', inplace=True)
-        valid_subsets = [subset for subset in [has_numeric, has_no_numeric] if (subset.shape[0] > 0)]
-        if not len(valid_subsets):
-            print("No numeric results found!!!")
-            continue
-        df = pd.concat(valid_subsets)
+        if 'units' in df:
+            has_no_numeric['result_value_num'] = has_no_numeric['comments'].progress_apply(parse_numeric_from_free_nu)
+        else:
+            has_no_numeric['result_value_num'] = has_no_numeric['comments'].progress_apply(parse_numeric_from_free_u)
+            has_no_numeric['units'] = has_no_numeric['comments'].progress_apply(parse_units)
+        df = unite_df(has_numeric, has_no_numeric)
+        # For those records that still don't have a number,
+        # Parse the non-numeric comments to distinguish "not detected" vs. "not done"
+        has_numeric, has_no_numeric = split_df(df)
+        lookup = {}
+        print("Parsing non-numeric commentary...")
+        for s in tqdm(has_no_numeric['comments'].unique()):
+            lookup[s] = classify_result(s)
+        comment_meanings = has_no_numeric['comments'].apply(lambda s: lookup[s])
+        zero_or_null = comment_meanings.apply(lambda s: 0 if (s == 'negative') else None)
+        has_no_numeric['result_value_num'] = zero_or_null
+        df = unite_df(has_numeric, has_no_numeric)
+        # Save items for which we found a number
+        df.dropna(subset='result_value_num', inplace=True)
         result_cols = query.get_result_columns()
-        columns_to_drop = [col for col in result_cols if col != 'result_value_num']
+        columns_to_drop = [col for col in result_cols if col not in ['units', 'result_value_num']]
         df.drop(columns=columns_to_drop, inplace=True)
         dest_table_name = 'quantresults'
 
@@ -297,9 +317,8 @@ def main():
         destinationdb.build_schema()
         print("Built db schema")
 
-    if False:
-        do_queries(virginia, destinationdb)
-        do_queries_quant(virginia, destinationdb)
-        do_demographics(virginia, condor, destinationdb)
-        do_annotation_queries(virginia, destinationdb)
+    do_queries(virginia, destinationdb)
+    do_queries_quant(virginia, destinationdb)
+    do_demographics(virginia, condor, destinationdb)
+    do_annotation_queries(virginia, destinationdb)
     annotate_pregnancy(virginia, condor, destinationdb)

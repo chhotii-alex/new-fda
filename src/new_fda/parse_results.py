@@ -1,6 +1,7 @@
 import re
 import importlib.resources
 import pandas as pd
+import numpy as np
 
 misspellings = {}
 with importlib.resources.open_text("new_fda", "misspellings.txt") as f:
@@ -73,14 +74,14 @@ def extract_result(s):
         meaning = 'unknown'
     return meaning
 
-def parse_numeric_from_free(comm):
+def parse_numeric_from_free(comm, require_units, return_units):
     t = comm.upper().strip()
     t = re.sub(r"\(.*\)", "", t)
     t = re.sub(r"THIS IS A CORRECTED REPORT.*CHANGED TO", "", t)
     t = re.sub(r"\d\d?/\d\d?/\d\d(\d\d)?.?", "", t)
     t = re.sub(r"\d?\d[:\.]\d\d([AP]M)?\.?", "", t)
     t = re.sub(r"CHANGED FROM .* TO", "", t)
-    t = re.sub(r"^DETECTED", "", t)
+    t = re.sub(r"^DETECTED,?", "", t)
     for bad in [
             "HIV-1 RNA DETECTED",
             ",",
@@ -112,7 +113,7 @@ def parse_numeric_from_free(comm):
         t = t.replace(item, " %s " % item)
     t = t.strip(". AP:")
     if not len(t):
-            return None
+            return np.nan
     words = t.split()
     factor = 1
     if words[0] == "<":
@@ -123,10 +124,27 @@ def parse_numeric_from_free(comm):
         words = words[1:]
     try:
         num = float(words[0])
-        # Check that the next thing after the number is a unit:
-        if ("COP" not in words[1]) and ("IU" not in words[1]):
-            return None
+        if require_units:
+            # Check that the next thing after the number is a unit:
+            if ("COP" not in words[1]) and ("IU" not in words[1]):
+                return np.nan
+            if return_units:
+                if ("COP" in words[1]):
+                    return "copies"
+                elif ("IU" in words[1]):
+                    return "IU"
+                else:
+                    raise Exception("hey didn't handle this case")
     except:
-            return None
+            return np.nan
     return num*factor
+
+def parse_numeric_from_free_u(comm):
+    return parse_numeric_from_free(comm, True, False)
+
+def parse_numeric_from_free_nu(comm):
+    return parse_numeric_from_free(comm, False, False)
+
+def parse_units(comm):
+    return parse_numeric_from_free(comm, True, True)
 

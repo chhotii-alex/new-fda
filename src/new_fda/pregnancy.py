@@ -51,7 +51,6 @@ def parse_zcode(diag):
     return None
 
 def get_pregnancy_records(db):
-    breakpoint()
     columns = ", ".join(["d.enc_num", "d.diag_cd_10", "d.rec_create_dt", "e.mrn", "e.adm_dt", "e.admit_diag_10",
                          "e.princ_diag"])
     table = db.get_prefix() + "DIAGNOSIS_10 d"
