@@ -13,6 +13,7 @@ from .ai_classify import classify_result
 from tqdm import tqdm
 from .demographics import get_demographics, get_demographics2
 from .pregnancy import get_delivery_records, get_pregnancy_records
+from .comorbid import get_diagnoses
 
 def get_mrn_dates(destinationdb, key_columns=['mrn', 'dx_date']):
     def get_all_results(table):
@@ -316,6 +317,9 @@ def main():
     if arg.redo:
         destinationdb.build_schema()
         print("Built db schema")
+
+    df = get_diagnoses(condor, 1000)
+    breakpoint()
 
     do_queries(virginia, destinationdb)
     do_queries_quant(virginia, destinationdb)
