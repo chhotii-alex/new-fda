@@ -292,6 +292,28 @@ CREATE INDEX "ix_smoking_mrn" ON "public"."smoking" USING btree ("mrn");
 
 
                 """
+DROP TABLE IF EXISTS "comorbidity";
+                """,
+                """
+CREATE TABLE "public"."comorbidity" (
+    "mrn" character(11) NOT NULL,
+    "dx_date" timestamp NOT NULL,
+    "tag" text
+) WITH (oids = false);
+                """,
+                """
+CREATE INDEX "ix_comorbidity_mrn" ON "public"."comorbidity" USING btree ("mrn");
+                """,
+                """
+CREATE INDEX "ix_comorbidity_dx_date" ON "public"."comorbidity" USING btree ("dx_date");
+                """,
+                """
+    ALTER TABLE "public"."comorbidity"
+    ADD CONSTRAINT unique_keys_comorbidity UNIQUE(mrn, dx_date);
+                """,
+
+
+                """
 DROP TABLE IF EXISTS "race";
                 """,
                 """

@@ -305,7 +305,17 @@ def do_demographics(virginia, condor, destinationdb):
     df.drop_duplicates(inplace=True)
     save_interesting(df, destinationdb,
                          key_columns=['mrn'])
-    
+
+def do_comorbidities(condor, destinationdb):
+    for tranche in range(10):
+        df = get_diagnoses(condor, tranche)
+        results = get_mrn_dates(destinationdb)
+        m = pd.merge(results, df, on='mrn', how='inner')
+        m['diff'] = (m['dx_date'] - m['adm_dt']).dt.days
+        drop_rows_with_mask(m, m['diff'] < 30)
+        m.drop(columns=['diff', 'adm_dt'], inplace=True)
+        m.drop_duplicates(inplace=True)
+        destinationdb.do_inserts('comorbidity', m, ['mrn', 'dx_date'])
 
 def main():
     tqdm.pandas()
@@ -318,11 +328,15 @@ def main():
         destinationdb.build_schema()
         print("Built db schema")
 
-    df = get_diagnoses(condor, 1000)
-    breakpoint()
-
-    do_queries(virginia, destinationdb)
-    do_queries_quant(virginia, destinationdb)
-    do_demographics(virginia, condor, destinationdb)
-    do_annotation_queries(virginia, destinationdb)
-    annotate_pregnancy(virginia, condor, destinationdb)
+    if arg.redo or arg.step < 1:
+        do_queries(virginia, destinationdb)
+    if arg.redo or arg.step < 2:
+        do_queries_quant(virginia, destinationdb)
+    if arg.redo or arg.step < 3:
+        do_comorbidities(condor, destinationdb)
+    if arg.redo or arg.step < 4:
+        do_demographics(virginia, condor, destinationdb)
+    if arg.redo or arg.step < 5:
+        do_annotation_queries(virginia, destinationdb)
+    if arg.redo or arg.step < 6:
+        annotate_pregnancy(virginia, condor, destinationdb)

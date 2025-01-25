@@ -1,0 +1,39 @@
+Abbreviation (SAS Data Element Name),Comorbidity Description,Uses present on admission (POA) indicators for assignment?
+CMR_AIDS,Acquired immune deficiency syndrome ,No
+CMR_ALCOHOL,Alcohol abuse ,No
+CMR_ANEMDEF,Deficiency anemias ,Yes
+CMR_AUTOIMMUNE,Autoimmune conditions,No
+CMR_BLDLOSS,Chronic blood loss anemia ,Yes
+CMR_CANCER_LEUK,Leukemia ,No
+CMR_CANCER_LYMPH,Lymphoma ,No
+CMR_CANCER_METS,Metastatic cancer ,No
+CMR_CANCER_NSITU,"Solid tumor without metastasis, in situ ",No
+CMR_CANCER_SOLID,"Solid tumor without metastasis, malignant ",No
+CMR_CBVD,Cerebrovascular disease,Yes
+CMR_COAG,Coagulopathy ,Yes
+CMR_DEMENTIA,Dementia ,No
+CMR_DEPRESS,Depression,No
+CMR_DIAB_CX,Diabetes with chronic complications ,No
+CMR_DIAB_UNCX,Diabetes without chronic complications ,No
+CMR_DRUG_ABUSE,Drug abuse ,No
+CMR_HF,Heart failure ,Yes
+CMR_HTN_CX,"Hypertension, complicated ",No
+CMR_HTN_UNCX,"Hypertension, uncomplicated ",No
+CMR_LIVER_MLD,"Liver disease, mild ",Yes
+CMR_LIVER_SEV,"Liver disease, moderate to severe ",Yes
+CMR_LUNG_CHRONIC,Chronic pulmonary disease ,No
+CMR_NEURO_MOVT,Neurological disorders affecting movement ,Yes
+CMR_NEURO_OTH,Other neurological disorders,Yes
+CMR_NEURO_SEIZ,Seizures and epilepsy ,Yes
+CMR_OBESE,Obesity ,No
+CMR_PARALYSIS,Paralysis ,Yes
+CMR_PERIVASC,Peripheral vascular disease ,No
+CMR_PSYCHOSES,Psychoses ,Yes
+CMR_PULMCIRC,Pulmonary circulation disease ,Yes
+CMR_RENLFL_MOD,"Renal failure, moderate ",Yes
+CMR_RENLFL_SEV,"Renal failure, severe ",Yes
+CMR_THYROID_HYPO,Hypothyroidism ,No
+CMR_THYROID_OTH,Other thyroid disorders,No
+CMR_ULCER_PEPTIC,Peptic ulcer with bleeding ,Yes
+CMR_VALVE,Valvular disease ,Yes
+CMR_WGHTLOSS,Weight loss ,Yes
