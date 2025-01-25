@@ -2,24 +2,27 @@ import pandas as pd
 from importlib import resources
 from . import comorbidities
 
-hcups_descriptions = pd.read_csv(resources.files(comorbidities) / "CMR-Reference-File_desc.csv")
-hcups_codes = pd.read_csv(resources.files(comorbidities) / "CMR-Reference-File_codes.csv")
-hcups_descriptions["short_name"] = hcups_descriptions["Abbreviation (SAS Data Element Name)"].str.slice(start=4)
-hcups_descriptions['tag_len'] = hcups_descriptions['short_name'].str.len()
-print(hcups_descriptions)
-print(hcups_descriptions['tag_len'].max())
+def get_codes(destinationdb):
+    hcups_descriptions = pd.read_csv(resources.files(comorbidities) / "CMR-Reference-File_desc.csv")
+    hcups_codes = pd.read_csv(resources.files(comorbidities) / "CMR-Reference-File_codes.csv")
+    hcups_descriptions["short_name"] = hcups_descriptions["Abbreviation (SAS Data Element Name)"].str.slice(start=4)
+    hcups_descriptions.rename(columns={"Comorbidity Description": "description"}, inplace=True)
+    hcups_descriptions = hcups_descriptions[['short_name', 'description']]
+    print(hcups_descriptions)
+    destinationdb.do_inserts("comorbidity_lookup", hcups_descriptions, ['short_name'])
 
-all_codes = None
-for tag in hcups_descriptions["short_name"]:
-    code_filter = hcups_codes[tag].astype('boolean')
-    codes_for_this_tag = pd.DataFrame({
-        'icd10' : hcups_codes.loc[code_filter, "ICD-10-CM Diagnosis"].copy(),
-        'tag' : tag
-    })
-    if all_codes is None:
-        all_codes = codes_for_this_tag
-    else:
-        all_codes = pd.concat([all_codes, codes_for_this_tag])
+    all_codes = None
+    for tag in hcups_descriptions["short_name"]:
+        code_filter = hcups_codes[tag].astype('boolean')
+        codes_for_this_tag = pd.DataFrame({
+            'icd10' : hcups_codes.loc[code_filter, "ICD-10-CM Diagnosis"].copy(),
+            'tag' : tag
+        })
+        if all_codes is None:
+            all_codes = codes_for_this_tag
+        else:
+            all_codes = pd.concat([all_codes, codes_for_this_tag])
+    return all_codes
 
 def get_admit_diagnoses(db, where, limit_clause):
     table = db.get_prefix() + "encounter e"
@@ -36,7 +39,7 @@ def get_addl_diagnoses(db, where, limit_clause):
     print(query)
     return db.do_select(query)
 
-def get_diagnoses(db, tranche=None, limit=None):
+def get_diagnoses(db, all_codes, tranche=None, limit=None):
     if limit:
         limit_clause = db.make_limit_clause(limit)
     else:

@@ -13,7 +13,7 @@ from .ai_classify import classify_result
 from tqdm import tqdm
 from .demographics import get_demographics, get_demographics2
 from .pregnancy import get_delivery_records, get_pregnancy_records
-from .comorbid import get_diagnoses
+from .comorbid import get_codes, get_diagnoses
 
 def get_mrn_dates(destinationdb, key_columns=['mrn', 'dx_date']):
     def get_all_results(table):
@@ -307,8 +307,9 @@ def do_demographics(virginia, condor, destinationdb):
                          key_columns=['mrn'])
 
 def do_comorbidities(condor, destinationdb):
+    all_codes = get_codes(destinationdb)
     for tranche in range(10):
-        df = get_diagnoses(condor, tranche)
+        df = get_diagnoses(condor, all_codes, tranche)
         results = get_mrn_dates(destinationdb)
         m = pd.merge(results, df, on='mrn', how='inner')
         m['diff'] = (m['dx_date'] - m['adm_dt']).dt.days

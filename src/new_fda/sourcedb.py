@@ -78,7 +78,7 @@ class PostgresDatabase(Database):
         table = table.lower()
         if limit_clause is None:
             limit_clause = ''
-        else:
+        if 'limit' in limit_clause.lower():
             print("WARNING, using a limit")
         if join is None:
             join_clause = ''
@@ -290,6 +290,23 @@ CREATE INDEX "ix_smoking_mrn" ON "public"."smoking" USING btree ("mrn");
     ADD CONSTRAINT unique_keys_smoking UNIQUE(mrn, dx_date);
                 """,
 
+                """
+DROP TABLE IF EXISTS "comorbidity_lookup";
+                """,
+                """
+CREATE TABLE "public"."comorbidity_lookup" (
+    "short_name" text NOT NULL,
+    "description" text
+) WITH (oids = false);
+                """,
+                """
+CREATE INDEX "ix_comorbidity_lookup_short_name" ON "public"."comorbidity_lookup" USING btree ("short_name");
+                """,
+                """
+    ALTER TABLE "public"."comorbidity_lookup"
+    ADD CONSTRAINT unique_keys_comorbidity_lookup UNIQUE(short_name);
+                """,
+                
 
                 """
 DROP TABLE IF EXISTS "comorbidity";
