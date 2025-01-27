@@ -357,13 +357,12 @@ def merge_data(destinationdb):
     tags = get_tags(destinationdb)
     for rtable in ['quantresults', 'results']:
         new_table_name = '%s_public' % rtable
-        drop_statement = 'DROP table ' + new_table_name
+        drop_statement = 'DROP TABLE IF EXISTS ' + new_table_name
         with destinationdb.engine.connect() as con:
             con.execute(text(drop_statement))
             con.commit()
-        breakpoint()
-        for tranche in range(10):
-            where = " WHERE mrn like '%s%d' " % ('%%', tranche)
+        for tranche in range(100):
+            where = " WHERE mrn like '%s%s' " % ('%%', str(tranche).zfill(2))
             q = "SELECT * from " + rtable + where
             print(q)
             df = destinationdb.do_select(q)
@@ -373,7 +372,7 @@ def merge_data(destinationdb):
                 comorbids = destinationdb.do_select(q)
                 df = df.merge(comorbids, on=['mrn', 'dx_date'], how="left")
                 tag = tag.lower()
-                df[tag] = df[tag].fillna(0)
+                df[tag] = df[tag].astype(float).fillna(0.0).astype(int)
                 print(tag, df[tag].sum())
             for table in [
                 "bmi",
@@ -397,6 +396,7 @@ def merge_data(destinationdb):
                 q = "SELECT * from " + table + where
                 anno = destinationdb.do_select(q)
                 df = df.merge(anno, on="mrn", how="left")
+            df.drop(columns='dx_date', inplace=True)
             df.to_sql(new_table_name, destinationdb.engine, if_exists='append', index=False, method='multi')
         grant_stmt = """grant select on %s to webapp;""" % new_table_name
         with destinationdb.engine.connect() as con:
