@@ -2,6 +2,7 @@
 import re
 import datetime
 import pandas as pd
+from datetime import date
 
 def get_immunosuppressive_meds():
     medications = ["abatacept", "adalimumab", "anakinra", "azathioprine", "basiliximab", 
@@ -76,6 +77,7 @@ def infer_stop_date(row):
     return start_dt + datetime.timedelta(days=days)
 
 def get_meds(virginia):
+    now = date(2024, 8, 1)
     columns = ['mrn', 'med_name', 'dispense', 'refills', 'take_amount', 'start_dt  start_date', 'coalesce(stop_dt, discontinue_dt) end_dt', 'duration']
     columns_clause = ", ".join(columns)
     table = virginia.get_prefix() + "vwOMR_Med"
@@ -84,9 +86,9 @@ def get_meds(virginia):
         where = """med_name like '%s'
                 and duration like 'ongoing%s'
                 and mrn is not null
-                and start_dt < getdate()
-                and (stop_dt is null or stop_dt < getdate())
-                and (discontinue_dt is null or discontinue_dt < getdate())"""  % (med, '%%')
+                and start_dt < '%s'
+                and (stop_dt is null or stop_dt < '%s')
+                and (discontinue_dt is null or discontinue_dt < '%s')"""  % (med, '%%', now, now, now)
         query = virginia.order_select_query('', columns_clause, table, None, where)
         print(query)
         df = virginia.do_select(query)
