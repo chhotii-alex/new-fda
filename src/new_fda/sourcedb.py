@@ -211,6 +211,7 @@ CREATE INDEX "ix_ses_mrn" ON "public"."ses" USING btree ("mrn");
     ALTER TABLE "public"."ses"
     ADD CONSTRAINT unique_keys_ses UNIQUE(mrn, dx_date);
                 """,
+
                 """
                     DROP TABLE IF EXISTS "pregnancy";
                 """,
@@ -232,6 +233,29 @@ CREATE INDEX "ix_pregnancy_mrn" ON "public"."pregnancy" USING btree ("mrn");
     ALTER TABLE "public"."pregnancy"
     ADD CONSTRAINT unique_keys_pregnancy UNIQUE(mrn, dx_date);
                 """,
+
+                """
+                    DROP TABLE IF EXISTS "immunosuppressed";
+                """,
+                """
+    CREATE TABLE "public"."immunosuppressed" (
+    "mrn" character(11) NOT NULL,
+    "dx_date" timestamp NOT NULL,
+    "immunosuppressed" boolean
+) WITH (oids = false);
+                """,
+                """
+            CREATE INDEX "ix_immunosuppressed_dx_date" ON "public"."immunosuppressed" USING btree ("dx_date");
+                """,
+                """
+CREATE INDEX "ix_immunosuppressed_mrn" ON "public"."immunosuppressed" USING btree ("mrn");
+
+                """,
+                """
+    ALTER TABLE "public"."immunosuppressed"
+    ADD CONSTRAINT unique_keys_immunosuppressed UNIQUE(mrn, dx_date);
+                """,
+
                 """
 DROP TABLE IF EXISTS "quantresults";
                 """,

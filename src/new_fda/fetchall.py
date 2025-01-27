@@ -16,6 +16,7 @@ from .pregnancy import get_delivery_records, get_pregnancy_records
 from .comorbid import get_codes, get_diagnoses
 from .ses import get_zipcodes
 from .census import CensusQuerier
+from .immunosuppress import get_meds
 
 def get_mrn_dates(destinationdb, key_columns=['mrn', 'dx_date']):
     def get_all_results(table):
@@ -289,18 +290,25 @@ def do_distinct_result_queries(virginia):
             f.write(s)
             f.write('\n\n')
 
+def annotate_daterange_state(destinationdb, state_name, data):
+    results = get_mrn_dates(destinationdb)
+    m = pd.merge(results, data, on='mrn', how='inner')
+    filter = (m['start_date'] <= m['dx_date']) & (m['end_date'] >= m['dx_date'])
+    m = m[filter].copy()
+    m[state_name] = True
+    m.drop(columns=['start_date', 'end_date'], inplace=True)
+    m.drop_duplicates(inplace=True)
+    destinationdb.do_inserts(state_name, m[['mrn', 'dx_date', state_name]], ['mrn', 'dx_date'])
+
 def annotate_pregnancy(virginia, condor, destinationdb):
     pregs = pd.concat( (get_pregnancy_records(condor),
                         get_delivery_records(virginia)) )
-    results = get_mrn_dates(destinationdb)
-    m = pd.merge(results, pregs, on='mrn', how='inner')
-    filter = (m['start_date'] <= m['dx_date']) & (m['end_date'] >= m['dx_date'])
-    m = m[filter].copy()
-    m['pregnancy'] = True
-    m.drop(columns=['start_date', 'end_date'], inplace=True)
-    m.drop_duplicates(inplace=True)
-    destinationdb.do_inserts('pregnancy', m, ['mrn', 'dx_date'])
+    annotate_daterange_state(destinationdb, 'pregnancy', pregs)
     
+def annotate_immunosuppression(virginia, destinationdb):
+    meds = get_meds(virginia)
+    annotate_daterange_state(destinationdb, 'immunosuppressed', meds)
+
 def do_demographics(virginia, condor, destinationdb):
     df = pd.concat((get_demographics(virginia),
                     get_demographics2(condor)))
@@ -364,3 +372,5 @@ def main():
         do_annotation_queries(virginia, destinationdb)
     if arg.redo or arg.step < 7:
         annotate_pregnancy(virginia, condor, destinationdb)
+    if arg.redo or arg.step < 8:
+        annotate_immunosuppression(virginia, destinationdb)
