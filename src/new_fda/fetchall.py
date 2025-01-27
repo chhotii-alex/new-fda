@@ -14,6 +14,8 @@ from tqdm import tqdm
 from .demographics import get_demographics, get_demographics2
 from .pregnancy import get_delivery_records, get_pregnancy_records
 from .comorbid import get_codes, get_diagnoses
+from .ses import get_zipcodes
+from .census import CensusQuerier
 
 def get_mrn_dates(destinationdb, key_columns=['mrn', 'dx_date']):
     def get_all_results(table):
@@ -318,6 +320,25 @@ def do_comorbidities(condor, destinationdb):
         m.drop_duplicates(inplace=True)
         destinationdb.do_inserts('comorbidity', m, ['mrn', 'dx_date'])
 
+def do_ses(condor, destinationdb):
+    q = CensusQuerier()
+    for tranche in range(10):
+        ses = get_zipcodes(condor, tranche)
+        results = get_mrn_dates(destinationdb,
+                                key_columns=['mrn', 'dx_date'])
+        m = pd.merge(results, ses, on='mrn', how='left')
+        m.dropna(inplace=True)
+        m['diff'] = (m['dx_date'] - m['result_dt']).dt.days
+        drop_rows_with_mask(m, (m['diff'] < -356))
+        m['diff'] = m['diff'].abs()
+        m.sort_values(by='diff', inplace=True)
+        m.drop(columns=['diff', 'result_dt'], inplace=True)
+        m.drop_duplicates(subset=['mrn', 'dx_date'], inplace=True)
+        m['ses'] = m['zipcode'].progress_apply(q.ses_bin_for_zip)
+        q.cache_data()
+        m.drop(columns=['zipcode'], inplace=True)
+        destinationdb.do_inserts("ses", m, ['mrn', 'dx_date'], True)
+    
 def main():
     tqdm.pandas()
 
@@ -336,8 +357,10 @@ def main():
     if arg.redo or arg.step < 3:
         do_comorbidities(condor, destinationdb)
     if arg.redo or arg.step < 4:
-        do_demographics(virginia, condor, destinationdb)
+        do_ses(condor, destinationdb)
     if arg.redo or arg.step < 5:
-        do_annotation_queries(virginia, destinationdb)
+        do_demographics(virginia, condor, destinationdb)
     if arg.redo or arg.step < 6:
+        do_annotation_queries(virginia, destinationdb)
+    if arg.redo or arg.step < 7:
         annotate_pregnancy(virginia, condor, destinationdb)

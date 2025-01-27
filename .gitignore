@@ -6,3 +6,5 @@ cache
 *.xlsx
 .ipynb_checkpoints
 *.ipynb
+*.pkl
+*_key.txt

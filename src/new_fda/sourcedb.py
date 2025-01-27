@@ -191,6 +191,27 @@ CREATE INDEX "ix_bmi_mrn" ON "public"."bmi" USING btree ("mrn");
     ADD CONSTRAINT unique_keys_bmi UNIQUE(mrn, dx_date);
                 """,
                 """
+                    DROP TABLE IF EXISTS "ses";
+                """,
+                """
+    CREATE TABLE "public"."ses" (
+    "mrn" character(11) NOT NULL,
+    "dx_date" timestamp NOT NULL,
+    "ses" smallint
+) WITH (oids = false);
+                """,
+                """
+            CREATE INDEX "ix_ses_dx_date" ON "public"."ses" USING btree ("dx_date");
+                """,
+                """
+CREATE INDEX "ix_ses_mrn" ON "public"."ses" USING btree ("mrn");
+
+                """,
+                """
+    ALTER TABLE "public"."ses"
+    ADD CONSTRAINT unique_keys_ses UNIQUE(mrn, dx_date);
+                """,
+                """
                     DROP TABLE IF EXISTS "pregnancy";
                 """,
                 """
