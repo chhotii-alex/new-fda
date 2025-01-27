@@ -398,6 +398,10 @@ def merge_data(destinationdb):
                 anno = destinationdb.do_select(q)
                 df = df.merge(anno, on="mrn", how="left")
             df.to_sql(new_table_name, destinationdb.engine, if_exists='append', index=False, method='multi')
+        grant_stmt = """grant select on %s to webapp;""" % new_table_name
+        with destinationdb.engine.connect() as con:
+            con.execute(text(grant_stmt))
+            con.commit()
 
 def main():
     tqdm.pandas()

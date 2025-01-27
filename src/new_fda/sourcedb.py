@@ -169,6 +169,9 @@ class DestinationDatabase(PostgresDatabase):
         with self.engine.connect() as con:
             for statement in [
                 """
+                    CREATE USER webapp WITH PASSWORD 'LieutenantCommander';
+                """,
+                """
                     DROP TABLE IF EXISTS "bmi";
                 """,
                 """
@@ -350,6 +353,7 @@ CREATE INDEX "ix_comorbidity_lookup_short_name" ON "public"."comorbidity_lookup"
     ALTER TABLE "public"."comorbidity_lookup"
     ADD CONSTRAINT unique_keys_comorbidity_lookup UNIQUE(short_name);
                 """,
+                """grant select on comorbidity_lookup to webapp;""",
                 
 
                 """
