@@ -347,6 +347,49 @@ def do_ses(condor, destinationdb):
         m.drop(columns=['zipcode'], inplace=True)
         destinationdb.do_inserts("ses", m, ['mrn', 'dx_date'], True)
     
+def get_tags(destinationdb):
+    q = 'SELECT "short_name" FROM "comorbidity_lookup"'
+    tags = destinationdb.do_select(q)
+    return list(tags['short_name'])
+        
+def merge_data(destinationdb):
+    tags = get_tags(destinationdb)
+    for table in ['results', 'quantresults']:
+        q = "SELECT * from " + table
+        df = destinationdb.do_select(q)
+        df.drop(columns='dob', inplace=True)
+        for tag in tags:
+            q = "SELECT mrn, dx_date, 1 %s from comorbidity where tag = '%s'" % (tag, tag)
+            comorbids = destinationdb.do_select(q)
+            df = df.merge(comorbids, on=['mrn', 'dx_date'], how="left")
+            tag = tag.lower()
+            df[tag] = df[tag].fillna(0)
+            print(tag, df[tag].sum())
+        for table in [
+            "bmi",
+            "ses",
+            "smoking",
+        ]:
+            q = "SELECT * from " + table
+            anno = destinationdb.do_select(q)
+            df = df.merge(anno, on=["mrn", "dx_date"], how="left")
+        for table in [
+           "immunosuppressed",
+            "pregnancy",
+        ]:
+            q = "SELECT * from " + table
+            anno = destinationdb.do_select(q)
+            df = df.merge(anno, on=["mrn", "dx_date"], how="left")
+            df[table] = df[table].fillna(0)
+        for table in [
+            "race"
+        ]:
+            q = "SELECT * from " + table
+            anno = destinationdb.do_select(q)
+            df = df.merge(anno, on="mrn", how="left")
+        new_table_name = '%s_public' % table
+        df.to_sql(new_table_name, destinationdb.engine, if_exists='replace', index=False, method='multi')
+
 def main():
     tqdm.pandas()
 
@@ -374,3 +417,5 @@ def main():
         annotate_pregnancy(virginia, condor, destinationdb)
     if arg.redo or arg.step < 8:
         annotate_immunosuppression(virginia, destinationdb)
+
+    merge_data(destinationdb)

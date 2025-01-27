@@ -55,7 +55,6 @@ class Database:
 class PostgresDatabase(Database):
     def get_connection_string(self):
         s = "postgresql+psycopg2://postgres:%s@localhost:%d/%s" % (self.get_password(), self.get_port(), self.schema.get_name())
-        print(s)
         return s
 
     def get_port(self):
