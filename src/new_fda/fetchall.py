@@ -1,6 +1,7 @@
 import re
 import pandas as pd
 import numpy as np
+from sqlalchemy.sql import text
 from .util import drop_rows_with_mask
 from .querydef import get_queries
 from .sourcedb import get_database
@@ -354,41 +355,49 @@ def get_tags(destinationdb):
         
 def merge_data(destinationdb):
     tags = get_tags(destinationdb)
-    for table in ['results', 'quantresults']:
-        q = "SELECT * from " + table
-        df = destinationdb.do_select(q)
-        df.drop(columns='dob', inplace=True)
-        for tag in tags:
-            q = "SELECT mrn, dx_date, 1 %s from comorbidity where tag = '%s'" % (tag, tag)
-            comorbids = destinationdb.do_select(q)
-            df = df.merge(comorbids, on=['mrn', 'dx_date'], how="left")
-            tag = tag.lower()
-            df[tag] = df[tag].fillna(0)
-            print(tag, df[tag].sum())
-        for table in [
-            "bmi",
-            "ses",
-            "smoking",
-        ]:
-            q = "SELECT * from " + table
-            anno = destinationdb.do_select(q)
-            df = df.merge(anno, on=["mrn", "dx_date"], how="left")
-        for table in [
-           "immunosuppressed",
-            "pregnancy",
-        ]:
-            q = "SELECT * from " + table
-            anno = destinationdb.do_select(q)
-            df = df.merge(anno, on=["mrn", "dx_date"], how="left")
-            df[table] = df[table].fillna(0)
-        for table in [
-            "race"
-        ]:
-            q = "SELECT * from " + table
-            anno = destinationdb.do_select(q)
-            df = df.merge(anno, on="mrn", how="left")
-        new_table_name = '%s_public' % table
-        df.to_sql(new_table_name, destinationdb.engine, if_exists='replace', index=False, method='multi')
+    for rtable in ['quantresults', 'results']:
+        new_table_name = '%s_public' % rtable
+        drop_statement = 'DROP table ' + new_table_name
+        with destinationdb.engine.connect() as con:
+            con.execute(text(drop_statement))
+            con.commit()
+        breakpoint()
+        for tranche in range(10):
+            where = " WHERE mrn like '%s%d' " % ('%%', tranche)
+            q = "SELECT * from " + rtable + where
+            print(q)
+            df = destinationdb.do_select(q)
+            df.drop(columns='dob', inplace=True)
+            for tag in tags:
+                q = "SELECT mrn, dx_date, 1 %s from comorbidity %s and tag = '%s'" % (tag, where, tag)
+                comorbids = destinationdb.do_select(q)
+                df = df.merge(comorbids, on=['mrn', 'dx_date'], how="left")
+                tag = tag.lower()
+                df[tag] = df[tag].fillna(0)
+                print(tag, df[tag].sum())
+            for table in [
+                "bmi",
+                "ses",
+                "smoking",
+            ]:
+                q = "SELECT * from " + table + where
+                anno = destinationdb.do_select(q)
+                df = df.merge(anno, on=["mrn", "dx_date"], how="left")
+            for table in [
+                "immunosuppressed",
+                "pregnancy",
+            ]:
+                q = "SELECT * from " + table + where
+                anno = destinationdb.do_select(q)
+                df = df.merge(anno, on=["mrn", "dx_date"], how="left")
+                df[table] = df[table].fillna(0)
+            for table in [
+                "race"
+            ]:
+                q = "SELECT * from " + table + where
+                anno = destinationdb.do_select(q)
+                df = df.merge(anno, on="mrn", how="left")
+            df.to_sql(new_table_name, destinationdb.engine, if_exists='append', index=False, method='multi')
 
 def main():
     tqdm.pandas()
