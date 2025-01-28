@@ -1,0 +1,31 @@
+﻿variable,variabledisplayname,value,valuedisplayname,noun,adjective,modifier,whereclause,sort,initiallychecked
+sex,Sex,male,Male,males,,,gender = 'M',1,1
+sex,Sex,female,Female,females,,,gender = 'F',2,1
+age,Age,young,<30 years old,,young (<30 y.o.),,age < 30,3,1
+age,Age,middle,30-60 years old,,30-60 y.o.,,age >= 30 AND age <= 60,4,1
+age,Age,old,>60 years old,,old (60+ y.o.),,age > 60,5,1
+loc,Patient Location,inpat,Inpatient,,,in inpatient settings,pat_type_full = 'INPATIENT',6,0
+loc,Patient Location,outpat,Outpatient,,,in outpatient settings,pat_type_full = 'OUTPATIENT',7,0
+loc,Patient Location,ed,Emergency room,,,in the emergency department,pat_type_full = 'EMERGENCY',8,0
+loc,Patient Location,inst,Institutional,,,at other institutions,pat_type_full = 'INSTITUTIONAL',9,0
+bmi,BMI,under,Underweight,,underweight,,bmi < 18.5 AND age > 17,10,0
+bmi,BMI,healthy,Healthy weight,,healthy weight,,bmi >= 18.5 AND bmi < 25 AND age > 17,11,0
+bmi,BMI,over,Overweight,,overweight,,bmi >= 25 AND bmi < 30 AND age > 17,12,0
+bmi,BMI,obese,Obese,,obese,,bmi >= 30 AND age > 17,13,0
+immuno,Immune Status,suppress,Immunosuppressed,,immunosuppressed,,immunosupressed,14,0
+immuno,Immune Status,competent,Immunocompetent,,immunocompetent,,NOT immunosuppressed or immunosuppressed is NULL,15,0
+smoke,Smoking Status,current,Current smokers,current smokers,,,smoking = 'current',16,0
+smoke,Smoking Status,former,Former smokers,former smokers,,,smoking = 'former',17,0
+smoke,Smoking Status,never,Never smoked,,,who never smoked,smoking = 'never',18,0
+ses,Neighborhood Income,1,"< $52,000",,,"from areas with median household income < $52,000",ses = 1,21,0
+ses,Neighborhood Income,2,"$52,000-$78,000",,,"from areas with median household income $52,000 to $78,000",ses = 2,22,0
+ses,Neighborhood Income,3,"$78,000-$104,000",,,"from areas with median household income $78,000 to $104,000",ses = 3,23,0
+ses,Neighborhood Income,4,"$104,000-$130,000",,,"from areas with median household income  $104,000 to $130,000",ses = 4,24,0
+ses,Neighborhood Income,5,">$130,000",,,"from areas with median household income > $130,000",ses = 5,25,0
+eth,Race/Ethnicity,white,White,,White,,race = 'WH',32,0
+eth,Race/Ethnicity,black,Black,,Black,,race = 'BL',33,0
+eth,Race/Ethnicity,asian,Asian/Pacific islander,,Asian and Pacific Islander,,race = 'AS',34,0
+eth,Race/Ethnicity,hisp,Hispanic,,Hispanic,,race = 'HS',35,0
+eth,Race/Ethnicity,other,Unknown/Other,,unknown or other,,race = 'UN',37,0
+preg,Pregnancy Status,pregnant,Pregnant,,pregnant,,pregnancy = 1,38,0
+preg,Pregnancy Status,not,Not pregnant,,non-pregnant,,pregnancy = 0 or pregnancy is NULL,40,0

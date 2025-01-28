@@ -18,6 +18,7 @@ from .comorbid import get_codes, get_diagnoses
 from .ses import get_zipcodes
 from .census import CensusQuerier
 from .immunosuppress import get_meds
+from importlib import resources
 
 def get_mrn_dates(destinationdb, key_columns=['mrn', 'dx_date']):
     def get_all_results(table):
@@ -352,6 +353,54 @@ def get_tags(destinationdb):
     q = 'SELECT "short_name" FROM "comorbidity_lookup"'
     tags = destinationdb.do_select(q)
     return list(tags['short_name'])
+
+def load_ui_vars(destinationdb):
+    with resources.open_text("new_fda", "uivars.csv") as f:
+        df = pd.read_csv(f)
+    df.to_sql('uivars', destinationdb.engine, if_exists='replace', index=False, method='multi')
+    with destinationdb.engine.connect() as con:
+        grant_stmt = """grant select on uivars to webapp;"""
+        con.execute(text(grant_stmt))
+        con.commit()
+
+def extract_data(destinationdb):
+    load_ui_vars(destinationdb)
+    with destinationdb.engine.connect() as con:
+        for table in [
+                'quantresults_public', 
+                'results_public'
+            ]:
+            for stmt in [
+                """
+                    UPDATE %s set pat_type_full = 'EMERGENCY' where pat_type_full like 'EMERGENCY%s'
+                """ % (table, '%%'),
+                """
+                    UPDATE %s set pat_type_full = 'INSTITUTIONAL' where pat_type_full = 'INTER-LAB'
+                """ % (table),
+                """
+                    UPDATE %s set pat_type_full = 'OUTPATIENT' where pat_type_full like '%sOUTPATIENT%s'
+                """ % (table, '%%', '%%'),
+                """
+                       CREATE INDEX if not exists "%s_dx" ON "public"."%s" USING btree ("dx");
+                """ % (table, table),
+            ]:
+                con.execute(text(stmt))
+                con.commit()
+            con.execute(text('CREATE INDEX if not exists "results_public_result" ON "public"."results_public" USING btree ("result");'))
+            con.commit()
+
+        drop_statement  = 'DROP TABLE  IF EXISTS tests_lookup'
+        con.execute(text(drop_statement))
+        con.commit()
+        for rtable in ['quantresults', 'results']:
+            q = "SELECT distinct(dx) FROM " + rtable
+            df = destinationdb.do_select(q)
+            df['table_name'] = rtable 
+            df.to_sql('tests_lookup', destinationdb.engine, if_exists='append', index=False, method='multi')
+
+        grant_stmt = """grant select on tests_lookup to webapp;"""
+        con.execute(text(grant_stmt))
+        con.commit()
         
 def merge_data(destinationdb):
     tags = get_tags(destinationdb)
@@ -430,5 +479,6 @@ def main():
         annotate_pregnancy(virginia, condor, destinationdb)
     if arg.redo or arg.step < 8:
         annotate_immunosuppression(virginia, destinationdb)
-
-    merge_data(destinationdb)
+    if arg.redo or arg.step < 9:
+        merge_data(destinationdb)
+    extract_data(destinationdb)
