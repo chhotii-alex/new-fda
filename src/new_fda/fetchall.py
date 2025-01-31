@@ -106,7 +106,7 @@ def do_queries_quant(virginia, destinationdb):
 
         if query.where_clause_value == 'Hepatitis C viral RNA, Quantitative, Real Time PCR':
             df['result_value_num'] = df['comments'].apply(parse_sendout)
-            df['units'] = 'UI/mL'
+            df['units'] = 'IU'
         if 'result_value_num' not in df:
             df['result_value_num'] = np.nan
         def split_df(df):
@@ -140,6 +140,18 @@ def do_queries_quant(virginia, destinationdb):
         df = unite_df(has_numeric, has_no_numeric)
         # Save items for which we found a number
         df.dropna(subset='result_value_num', inplace=True)
+        def regularize_units(s):
+            if type(s) != str:
+                return None
+            if 'cop' in s:
+                base = 'copies'
+            elif 'IU' in s:
+                base = 'IU'
+            if 'log' in s:
+                return 'log10 ' + base
+            else:
+                return base
+        df['units'] = df['units'].apply(regularize_units)
         result_cols = query.get_result_columns()
         columns_to_drop = [col for col in result_cols if col not in ['units', 'result_value_num']]
         df.drop(columns=columns_to_drop, inplace=True)
