@@ -271,7 +271,8 @@ CREATE TABLE "public"."quantresults" (
     "pat_type_full" text,
     "age" smallint,
     "result_value_num" double precision,
-    "units" text
+    "units" text,
+    "result_value_log10" double preceison NULL
 ) WITH (oids = false);
 
                 """,

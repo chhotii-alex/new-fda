@@ -415,6 +415,21 @@ def extract_data(destinationdb):
         con.commit()
         
 def merge_data(destinationdb):
+    with destinationdb.engine.connect() as con:
+        for statement in [
+            """
+update "quantresults"
+set result_value_log10 = log10(result_value_num)
+where result_value_num > 0
+and units not like '%%log%%'
+""",
+            """
+update "quantresults"
+set result_value_log10 = result_value_num
+where result_value_num > 0
+and units  like '%%log%%'
+    """]:
+            con.execute(text(statement))
     tags = get_tags(destinationdb)
     for rtable in ['quantresults', 'results']:
         new_table_name = '%s_public' % rtable
