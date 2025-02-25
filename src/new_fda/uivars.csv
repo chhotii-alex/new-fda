@@ -12,7 +12,7 @@ bmi,BMI,under,Underweight,,underweight,,bmi < 18.5 AND age > 17,10,0
 bmi,BMI,healthy,Healthy weight,,healthy weight,,bmi >= 18.5 AND bmi < 25 AND age > 17,11,0
 bmi,BMI,over,Overweight,,overweight,,bmi >= 25 AND bmi < 30 AND age > 17,12,0
 bmi,BMI,obese,Obese,,obese,,bmi >= 30 AND age > 17,13,0
-immuno,Immune Status,suppress,Immunosuppressed,,immunosuppressed,,immunosupressed,14,0
+immuno,Immune Status,suppress,Immunosuppressed,,immunosuppressed,,immunosuppressed,14,0
 immuno,Immune Status,competent,Immunocompetent,,immunocompetent,,NOT immunosuppressed or immunosuppressed is NULL,15,0
 smoke,Smoking Status,current,Current smokers,current smokers,,,smoking = 'current',16,0
 smoke,Smoking Status,former,Former smokers,former smokers,,,smoking = 'former',17,0
