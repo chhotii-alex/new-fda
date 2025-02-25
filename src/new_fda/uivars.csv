@@ -27,5 +27,5 @@ eth,Race/Ethnicity,black,Black,,Black,,race = 'BL',33,0
 eth,Race/Ethnicity,asian,Asian/Pacific islander,,Asian and Pacific Islander,,race = 'AS',34,0
 eth,Race/Ethnicity,hisp,Hispanic,,Hispanic,,race = 'HS',35,0
 eth,Race/Ethnicity,other,Unknown/Other,,unknown or other,,race = 'UN',37,0
-preg,Pregnancy Status,pregnant,Pregnant,,pregnant,,pregnancy = 1,38,0
-preg,Pregnancy Status,not,Not pregnant,,non-pregnant,,pregnancy = 0 or pregnancy is NULL,40,0
+preg,Pregnancy Status,pregnant,Pregnant,,pregnant,,pregnancy,38,0
+preg,Pregnancy Status,not,Not pregnant,,non-pregnant,,NOT pregnancy or pregnancy is NULL,40,0

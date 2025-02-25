@@ -465,7 +465,7 @@ and units  like '%%log%%'
                 q = "SELECT * from " + table + where
                 anno = destinationdb.do_select(q)
                 df = df.merge(anno, on=["mrn", "dx_date"], how="left")
-                df[table] = df[table].fillna(0)
+                df[table] = df[table].fillna(0).astype(bool)
             for table in [
                 "race"
             ]:
